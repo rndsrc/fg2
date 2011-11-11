@@ -22,12 +22,16 @@
 typedef int Z;
 #if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
 typedef double R;
+#define K(x) (x)
 #else
 typedef float R;
+#define K(x) (x##f)
 #endif
 
 void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
+
+int solve(R, R, Z, Z);
 
 #endif

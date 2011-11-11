@@ -31,6 +31,7 @@ Try `hydro --help` for more information.\n", bad);
 \n\
       --help        display this help and exit\n\
   -n                number of frames and grids\n\
+  -t                total time\n\
 \n\
 Report bugs to <ckch@nordita.org>.\n");
 

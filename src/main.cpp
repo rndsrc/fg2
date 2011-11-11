@@ -29,6 +29,7 @@ int main(int argc, char **argv)
   const char *input = "default";
 
   Z n0 = 10, n1 = 1024, n2 = 1024;
+  R t  = 1.;
 
   // If "--help" is an argument, print usage and exit
   for(int i = 1; i < argc; ++i)
@@ -43,6 +44,7 @@ int main(int argc, char **argv)
       PARA('n') n0 = atoi(argv[++i]); BREAK;
            n2 = n1 = atoi(argv[++i]); BREAK;
                 n2 = atoi(argv[++i]); break;
+      PARA('t') t  = atof(argv[++i]); break;
       default : ignore : usage(argv[i]);
     }
   }
@@ -51,7 +53,8 @@ int main(int argc, char **argv)
   print("2D finite grid code written in CUDA C\n\n");
   print("  Resolution : %d x %d\n", n1, n2);
   print("  Initialize : \"%s\"\n", input);
-  print("  Time       : %d\n", n0);
 
-  return 0;
+  // Really solve the problem
+  print("  Time       : %g with %d frame%s\n", t, n0, n0 > 1 ? "s" : "");
+  return solve(0.0, t, 0, n0);
 }
