@@ -19,6 +19,16 @@
 #ifndef FG2_H
 #define FG2_H
 
+#ifndef ORDER
+#define ORDER 6
+#endif
+
+#if (ORDER) < 0 || (ORDER) % 2
+#error !!! ORDER must be positive and even !!!
+#else
+#define HALF ((ORDER) / 2)
+#endif
+
 typedef int Z;
 #if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
 typedef double R;
@@ -28,10 +38,23 @@ typedef float R;
 #define K(x) (x##f)
 #endif
 
+typedef struct state S;
+#define NVAR (sizeof(S) / sizeof(R))
+
+namespace global {
+  extern Z n1, n2, s;     // resolution, stride in R
+  extern R *u, *v, *host; // state, swap, and host array
+}
+
 void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
 
+int setup(Z, Z);
 int solve(R, R, Z, Z);
+
+struct state {
+  R den, u1, u2; // density and velocity
+};
 
 #endif

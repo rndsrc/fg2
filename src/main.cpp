@@ -67,8 +67,14 @@ int main(int argc, char **argv)
   } else
     error("does not exist, QUIT\n");
 
-  // Print simulation setup
-  print("  Resolution : %d x %d\n", n1, n2);
+  // Setup the grid and global variables
+  print("  Resolution : %d x %d", n1, n2);
+  if(int sz = setup(n1, n2))
+    print(" using %gMiB of memory\n", sz / 1048576.0);
+  else
+    error(", fail to allocate memory, QUIT\n");
+
+  // TODO: setup initial condition or load starting frame from input
   print("  Initialize : \"%s\"\n", input);
 
   // Really solve the problem
