@@ -30,6 +30,7 @@ Try `hydro --help` for more information.\n", bad);
 2D finite grid code written in CUDA C\n\
 \n\
       --help        display this help and exit\n\
+  -n                number of frames and grids\n\
 \n\
 Report bugs to <ckch@nordita.org>.\n");
 
