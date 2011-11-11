@@ -16,17 +16,25 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#ifndef FG2_H
-#define FG2_H
+#include <cstdlib>
+#include <cstdarg>
+#include <cstdio>
+#include "fg2.h"
 
-typedef int Z;
-#if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
-typedef double R;
-#else
-typedef float R;
-#endif
+void print(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vfprintf(stdout, format, args);
+  va_end(args);
+  fflush(stdout);
+}
 
-void print(const char *, ...);
-void error(const char *, ...);
-
-#endif
+void error(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vfprintf(stderr, format, args);
+  va_end(args);
+  exit(-1);
+}

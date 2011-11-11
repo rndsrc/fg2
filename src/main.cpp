@@ -16,12 +16,11 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cstdio>
 #include "fg2.h"
 
 int main(int argc, char **argv)
 {
-  printf("2D finite grid code written in CUDA C\n");
+  print("2D finite grid code written in CUDA C\n");
 
   return 0;
 }
