@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cuda_runtime.h>
 #include "fg2.h"
 
 #define NOVAL (i+1 == argc) || (argv[i+1][0] == '-')
@@ -31,6 +32,8 @@ int main(int argc, char **argv)
   Z n0 = 10, n1 = 1024, n2 = 1024;
   R t  = 1.;
 
+  int d = 0;
+
   // If "--help" is an argument, print usage and exit
   for(int i = 1; i < argc; ++i)
     if(!strcmp(argv[i], "--help")) usage(NULL);
@@ -41,6 +44,7 @@ int main(int argc, char **argv)
     if(argv[i][0] != '-') input = argv[i];
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
+      PARA('d') d  = atoi(argv[++i]); break;
       PARA('n') n0 = atoi(argv[++i]); BREAK;
            n2 = n1 = atoi(argv[++i]); BREAK;
                 n2 = atoi(argv[++i]); break;
@@ -48,9 +52,22 @@ int main(int argc, char **argv)
       default : ignore : usage(argv[i]);
     }
   }
+  print("2D finite grid code written in CUDA C\n\n");
+
+  // Pick a device
+  int count; cudaGetDeviceCount(&count);
+  print("  Device %d/%d : ", d, count);
+  if(d < count) {
+    if(cudaSuccess == cudaSetDevice(d)) {
+      cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
+      print("\"%s\" with %gMiB of memory\n",
+            dev.name, dev.totalGlobalMem / 1048576.0);
+    } else
+      error("fail to pick device, QUIT\n");
+  } else
+    error("does not exist, QUIT\n");
 
   // Print simulation setup
-  print("2D finite grid code written in CUDA C\n\n");
   print("  Resolution : %d x %d\n", n1, n2);
   print("  Initialize : \"%s\"\n", input);
 
