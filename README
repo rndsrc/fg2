@@ -1,0 +1,13 @@
+2D finite grid code written in CUDA C
+=====================================
+
+The fg2 Code is a grid based code for compressible hydrodynamic flows
+with radiation.  It uses various finite difference and finite volume
+techniques.  It is implemented in CUDA C and runs efficiently on GPU.
+
+ARCHITECTURE: on a typical stream processor such as an nVidia GPU,
+  computation is essentially free.  It is the communication overhead
+  that limits the performance of a code.  We design the fg2 framework
+  so it can hide latency as much as possible.  We use a modified
+  version of "rolling cache" method (Micikevicius 2009) to optimize
+  our GPU kernel.
