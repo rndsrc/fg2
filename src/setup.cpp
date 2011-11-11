@@ -17,6 +17,7 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdlib>
+#include <limits>
 #include <cuda_runtime.h>
 #include "fg2.h"
 
@@ -55,11 +56,16 @@ int setup(Z n1, Z n2)
   global::v = (R *)v + HALF * (global::s + NVAR);
 
   // Allocate host memory
-  Z sz = sizeof(R) * global::s * m1;
-  R *h = (R *)malloc(sz);
+  Z  n = global::s * m1;
+  R *h = (R *)malloc(sizeof(R) * n);
   if(NULL == h) return 0;
   global::host = h + HALF * (global::s + NVAR);
 
+  // Initialize all arrays to -FLT_MAX or -DBL_MAX
+  for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
+  cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
+  cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
+
   // Return size of device memory
-  return 2 * sz;
+  return 2 * sizeof(R) * n;
 }
