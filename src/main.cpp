@@ -16,10 +16,15 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <cstring>
 #include "fg2.h"
 
 int main(int argc, char **argv)
 {
+  // If "--help" is an argument, print usage and exit
+  for(int i = 1; i < argc; ++i)
+    if(!strcmp(argv[i], "--help")) usage(NULL);
+
   print("2D finite grid code written in CUDA C\n");
 
   return 0;

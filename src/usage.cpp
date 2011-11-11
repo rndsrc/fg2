@@ -16,18 +16,22 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#ifndef FG2_H
-#define FG2_H
+#include <cstdlib>
+#include <cstdio>
+#include "fg2.h"
 
-typedef int Z;
-#if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
-typedef double R;
-#else
-typedef float R;
-#endif
+void usage(const char *bad)
+{
+  if(bad)
+    fprintf(stderr, "hydro: illegal option \"%s\"\n\
+Try `hydro --help` for more information.\n", bad);
+  else
+    print("Usage: hydro [OPTION...] [INPUT_FILE]\n\
+2D finite grid code written in CUDA C\n\
+\n\
+      --help        display this help and exit\n\
+\n\
+Report bugs to <ckch@nordita.org>.\n");
 
-void print(const char *, ...);
-void error(const char *, ...);
-void usage(const char *);
-
-#endif
+  exit(bad ? -1 : 0);
+}
