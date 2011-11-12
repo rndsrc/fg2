@@ -27,11 +27,8 @@ void step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
 
   for(Z i = 0; i < 3; ++i) {
     using namespace global;
-    // TODO:
-    //
-    // T = t +      alpha[i] *dt;  sub-step time
-    // v = F(u,T) + beta [i] * v;  "kick" step
-    drift(u, v, dt * gamma[i]); // "drift" step
+    kick (v, u, t + dt * alpha[i], beta[i]); // v <- F(u, T) + beta[i] * v
+    drift(u, v,     dt * gamma[i]         ); // u <- u + dt * gamma[i] * v
   }
   cudaThreadSynchronize();
 }

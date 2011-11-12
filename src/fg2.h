@@ -64,6 +64,7 @@ int setup(Z, Z);
 int solve(R, R, Z, Z);
 void step(R, R);
 
+void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 
 struct state {
