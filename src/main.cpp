@@ -83,6 +83,7 @@ int main(int argc, char **argv)
 
   // TODO: setup initial condition or load starting frame from input
   print("  Initialize   : \"%s\"\n", input);
+  dump(0, "raw");
 
   // Really solve the problem
   print("  Time         : %g with %d frame%s\n", t, n0, n0 > 1 ? "s" : "");

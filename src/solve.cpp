@@ -49,7 +49,7 @@ int solve(R t, R T, Z i, Z n)
     print("\b\b\b\b\b\b\b\b\b\b\b\b\b, %d step%s (%.3fms/step)\n",
           m, m > 1 ? "s" : "", ms);
 
-    // TODO: output data
+    dump(i + 1, "raw");
   }
 
   print("======================= Done  Simulation =======================\n");

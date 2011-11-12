@@ -51,6 +51,8 @@ void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
 
+void dump(Z, const char *);
+
 int setup(Z, Z);
 int solve(R, R, Z, Z);
 
