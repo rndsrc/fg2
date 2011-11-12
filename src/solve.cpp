@@ -29,10 +29,10 @@ int solve(R t, R T, Z i, Z n)
   cudaEventCreate(&t1);
   print("======================= Start Simulation =======================\n");
 
-  for(R dT = (T - t) / n; i < n; ++i) {
+  for(R dT = (T - t) / n; i++ < n; dump(i, "raw")) {
     Z m = 0;
 
-    print("%4d:%7.2f ->%7.2f             ", i + 1, t, T = dT * (i + 1));
+    print("%4d:%7.2f ->%7.2f             ", i, t, T = dT * i);
     cudaEventRecord(t0, 0);
     while(t < T) {
       const R dt = std::min(T - t, K(1.0) / 1024); // TODO: dynamical dt
@@ -48,8 +48,6 @@ int solve(R t, R T, Z i, Z n)
     float ms; cudaEventElapsedTime(&ms, t0, t1); ms /= m;
     print("\b\b\b\b\b\b\b\b\b\b\b\b\b, %d step%s (%.3fms/step)\n",
           m, m > 1 ? "s" : "", ms);
-
-    dump(i + 1, "raw");
   }
 
   print("======================= Done  Simulation =======================\n");
