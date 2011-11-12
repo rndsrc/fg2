@@ -81,8 +81,9 @@ int main(int argc, char **argv)
   print(" using %.3gKiB (%.3g%%) of shared memory\n",
         global::sz / 1024.0, 100.0 * global::sz / ssz);
 
-  // TODO: setup initial condition or load starting frame from input
+  // Setup initial condition or load starting frame from input
   print("  Initialize   : \"%s\"\n", input);
+  init(NULL); // TODO: if input is a path to a valid file, load input
   dump(0, "raw");
 
   // Really solve the problem

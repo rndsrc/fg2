@@ -51,6 +51,7 @@ void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
 
+void init(S (*)(R, R));
 void dump(Z, const char *);
 
 int setup(Z, Z);
