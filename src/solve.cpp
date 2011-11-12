@@ -38,7 +38,7 @@ int solve(R t, R T, Z i, Z n)
       const R dt = std::min(T - t, K(1.0) / 1024); // TODO: dynamical dt
 
       print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], dt);
-      // TODO: time stepping
+      step(t, dt);
 
       t = std::min(t + dt, T);
     }

@@ -58,6 +58,7 @@ void dump(Z, const char *);
 
 int setup(Z, Z);
 int solve(R, R, Z, Z);
+void step(R, R);
 
 struct state {
   R den, u1, u2; // density and velocity
