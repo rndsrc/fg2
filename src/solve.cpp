@@ -27,7 +27,7 @@ int solve(R t, R T, Z i, Z n)
   cudaEvent_t t0, t1;
   cudaEventCreate(&t0);
   cudaEventCreate(&t1);
-  print("======================= Start Simulation =======================\n");
+  banner(" Start Simulation ", '=', '=');
 
   for(R dT = (T - t) / n; i++ < n; dump(i, "raw")) {
     Z m = 0;
@@ -45,12 +45,14 @@ int solve(R t, R T, Z i, Z n)
     cudaEventRecord(t1, 0);
     cudaEventSynchronize(t1);
 
-    float ms; cudaEventElapsedTime(&ms, t0, t1); ms /= m;
-    print("\b\b\b\b\b\b\b\b\b\b\b\b\b, %d step%s (%.3fms/step)\n",
-          m, m > 1 ? "s" : "", ms);
+    using namespace global;
+    float ns; cudaEventElapsedTime(&ns, t0, t1); ns *= 1e6 / m;
+    print("\b\b\b\b\b\b\b\b\b\b\b\b\b, %d step%s "
+          "(%.3fms/step, %.3fGflops, %.3fGbps)\n",
+          m, m > 1 ? "s" : "", 1e-6 * ns, flops / ns, bps / ns);
   }
 
-  print("======================= Done  Simulation =======================\n");
+  banner(" Done  Simulation ", '=', '=');
   cudaEventDestroy(t1);
   cudaEventDestroy(t0);
   return 0;

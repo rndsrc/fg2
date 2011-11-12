@@ -25,6 +25,7 @@ namespace global {
   Z n1, n2, s;
   R *u, *v, *host = NULL;
   Z g1, g2, b1, b2, sz;
+  double flops, bps;
 }
 
 static void done(void)
@@ -83,6 +84,10 @@ int setup(Z n1, Z n2)
   for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
   cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
+
+  // Compute floating point operation and bandwidth per step
+  global::flops = 0.0;
+  global::bps   = 0.0;
 
   // Return size of device memory
   return 2 * sizeof(R) * n;
