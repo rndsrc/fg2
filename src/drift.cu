@@ -16,22 +16,21 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cuda_runtime.h>
 #include "fg2.h"
 
-void step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
+static __global__ void kernel(R *x, const R *v, const R dt,
+                              const Z n, const Z s)
 {
-  const R alpha[] = {0.0, 1.0/3.0, 3.0/4.0};
-  const R beta [] = {0.0, -5.0/9.0, -153.0/128.0};
-  const R gamma[] = {1.0/3.0, 15.0/16.0, 8.0/15.0};
-
-  for(Z i = 0; i < 3; ++i) {
-    using namespace global;
-    // TODO:
-    //
-    // T = t +      alpha[i] *dt;  sub-step time
-    // v = F(u,T) + beta [i] * v;  "kick" step
-    drift(u, v, dt * gamma[i]); // "drift" step
+  const Z j = blockIdx.x * blockDim.x + threadIdx.x;
+  if(j < n) {
+    const Z h = blockIdx.y * s + j;
+    x[h] += dt * v[h];
   }
-  cudaThreadSynchronize();
+}
+
+void drift(R *x, const R *v, R dt)
+{
+  const Z n = NVAR * global::n2;
+  const dim3 Gsz((n - 1) / BSZ + 1, global::n1);
+  kernel<<<Gsz, BSZ>>>(x, v, dt, n, global::s);
 }

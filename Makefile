@@ -7,7 +7,7 @@ CFLAGS  = $(addprefix --compiler-options , -Wall) -O3
 
 compile:
 	mkdir -p bin
-	$(NVCC) src/*.cpp $(CFLAGS) $(LDFLAGS) -o bin/hydro
+	$(NVCC) src/*.{cu,cpp} $(CFLAGS) $(LDFLAGS) -o bin/hydro
 
 clean:
 	-rm -f bin/hydro

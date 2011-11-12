@@ -46,7 +46,7 @@ int setup(Z n1, Z n2)
   // Grid and block sizes for rolling cache kernel
   int d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
-  for(Z h = 0, i = 0, j = 1; i < j && i++ * j < 256; ) {
+  for(Z h = 0, i = 0, j = 1; i < j && i++ * j < BSZ; ) {
     j = dev.sharedMemPerBlock / (sizeof(S) * (ORDER + i)) - ORDER;
     if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
     else j = (j / dev.warpSize) * dev.warpSize;
@@ -86,8 +86,8 @@ int setup(Z n1, Z n2)
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
 
   // Compute floating point operation and bandwidth per step
-  global::flops = 0.0;
-  global::bps   = 0.0;
+  global::flops = 3 * n1 * n2 * NVAR;                // assume FMA
+  global::bps   = 3 * n1 * n2 * sizeof(S) * 8 * 3.0; // 2 read + 1 write
 
   // Return size of device memory
   return 2 * sizeof(R) * n;

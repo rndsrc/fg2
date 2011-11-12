@@ -19,6 +19,10 @@
 #ifndef FG2_H
 #define FG2_H
 
+#ifndef BSZ
+#define BSZ 256
+#endif
+
 #ifndef ORDER
 #define ORDER 6
 #endif
@@ -59,6 +63,8 @@ void dump(Z, const char *);
 int setup(Z, Z);
 int solve(R, R, Z, Z);
 void step(R, R);
+
+void drift(R *, const R *, R);
 
 struct state {
   R den, u1, u2; // density and velocity
