@@ -24,6 +24,7 @@
 namespace global {
   Z n1, n2, s;
   R *u, *v, *host = NULL;
+  Z g1, g2, b1, b2, sz;
 }
 
 static void done(void)
@@ -40,6 +41,23 @@ int setup(Z n1, Z n2)
 
   Z m1 = (global::n1 = n1) + ORDER;
   Z m2 = (global::n2 = n2) + ORDER;
+
+  // Grid and block sizes for rolling cache kernel
+  int d; cudaGetDevice(&d);
+  cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
+  for(Z h = 0, i = 0, j = 1; i < j && i * j < 256; ) {
+    j = dev.sharedMemPerBlock / (sizeof(S) * (ORDER + (++i))) - ORDER;
+    if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
+    else j = (j / dev.warpSize) * dev.warpSize;
+    if(i * j > h) {
+      h = i * j;
+      global::b1 = i;
+      global::b2 = j;
+      global::sz = sizeof(S) * (ORDER + i) * (ORDER + j);
+    }
+  }
+  global::g2 = (n2 - 1) / global::b2 + 1;
+  global::g1 = (dev.multiProcessorCount - 1) / global::g2 + 1;
 
   // State variable
   void *u; size_t upitch;

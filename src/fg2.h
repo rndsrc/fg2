@@ -42,8 +42,9 @@ typedef struct state S;
 #define NVAR (sizeof(S) / sizeof(R))
 
 namespace global {
-  extern Z n1, n2, s;     // resolution, stride in R
-  extern R *u, *v, *host; // state, swap, and host array
+  extern Z n1, n2, s;          // resolution, stride in R
+  extern R *u, *v, *host;      // state, swap, and host array
+  extern Z g1, g2, b1, b2, sz; // grid and block dim, shared memory in byte
 }
 
 void print(const char *, ...);
