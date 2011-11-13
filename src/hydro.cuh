@@ -16,14 +16,21 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#define NUS K(5e-4) // shear viscosity
+#define NUB K(5e-4) // bulk  viscosity
+
 static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
 {
-  const R ld = u->ld, d1_ld = D1(ld), d2_ld = D2(ld);
-  const R u1 = u->u1, d1_u1 = D1(u1), d2_u1 = D2(u1);
-  const R u2 = u->u2, d1_u2 = D1(u2), d2_u2 = D2(u2);
+  const R             d1_ld = D1(ld), d2_ld = D2(ld); // 18 FLOP
+  const R u1 = u->u1, d1_u1 = D1(u1), d2_u1 = D2(u1); // 18 FLOP
+  const R u2 = u->u2, d1_u2 = D1(u2), d2_u2 = D2(u2); // 18 FLOP
 
-  return (S){
-    -(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2  ),
-    -(u1 * d1_u1 + u2 * d2_u1 + d1_ld - K(5e-4) * (D11(u1) + D22(u1))),
-    -(u1 * d1_u2 + u2 * d2_u2 + d2_ld - K(5e-4) * (D11(u2) + D22(u2)))};
+  const R a = NUS / K(3.0) + NUB, b = NUS + a; // 3 FLOP
+
+  const R diff1 = b   * D11(u1) + a * D12(u2) + NUS * D22(u1); // 45 FLOP
+  const R diff2 = NUS * D11(u2) + a * D21(u1) + b   * D22(u2); // 45 FLOP
+
+  return (S){-(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2),
+             -(u1 * d1_u1 + u2 * d2_u1 + d1_ld - diff1),
+             -(u1 * d1_u2 + u2 * d2_u2 + d2_ld - diff2)}; // 18 FLOP
 }
