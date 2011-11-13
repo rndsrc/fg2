@@ -26,6 +26,8 @@ pro vis, i
   readu, lun, data
   close, lun & free_lun, lun
 
+  data[0,*,*] = exp(data[0,*,*])
+
   h = size[0] / 2
   x = (findgen(size[0]) + 0.5) / size[0]
   y = 0.5 * (data[0,*,h-1] + data[0,*,h])
