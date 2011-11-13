@@ -25,10 +25,15 @@ static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
   const R u1 = u->u1, d1_u1 = D1(u1), d2_u1 = D2(u1); // 18 FLOP
   const R u2 = u->u2, d1_u2 = D1(u2), d2_u2 = D2(u2); // 18 FLOP
 
-  const R a = NUS / K(3.0) + NUB, b = NUS + a; // 3 FLOP
+  const R s11 = (K(2.0) * d1_u1 - d2_u2) / K(3.0); // 3 FLOP
+  const R s12 = (         d1_u2 + d2_u1) / K(2.0); // 2 FLOP
+  const R s22 = (K(2.0) * d2_u2 - d1_u1) / K(3.0); // 3 FLOP
+  const R a   = NUS / K(3.0) + NUB, b = NUS + a;   // 3 FLOP
 
-  const R diff1 = b   * D11(u1) + a * D12(u2) + NUS * D22(u1); // 45 FLOP
-  const R diff2 = NUS * D11(u2) + a * D21(u1) + b   * D22(u2); // 45 FLOP
+  const R diff1 = (K(2.0) * NUS) * (s11 * d1_ld + s12 * d2_ld)
+                +  b   * D11(u1) + a * D12(u2) + NUS * D22(u1); // 49 FLOP
+  const R diff2 = (K(2.0) * NUS) * (s12 * d1_ld + s22 * d2_ld)
+                +  NUS * D11(u2) + a * D21(u1) + b   * D22(u2); // 49 FLOP
 
   return (S){-(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2),
              -(u1 * d1_u1 + u2 * d2_u1 + d1_ld - diff1),
