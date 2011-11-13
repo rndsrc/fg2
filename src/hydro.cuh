@@ -18,8 +18,7 @@
 
 static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
 {
-  const R dt_den = - u->u1 * (u[0].den - u[-s].den) / d1
-                   - u->u2 * (u[0].den - u[-1].den) / d2;
+  const R dt_den = - u->u1 * D1(den) - u->u2 * D2(den);
 
   return (S){dt_den, K(0.0), K(0.0)};
 }

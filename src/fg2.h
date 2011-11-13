@@ -24,7 +24,7 @@
 #endif
 
 #ifndef ORDER
-#define ORDER 2 // for 1st-order up-wind method
+#define ORDER 6
 #endif
 
 #if (ORDER) < 0 || (ORDER) % 2
