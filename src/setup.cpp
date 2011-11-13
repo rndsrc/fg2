@@ -81,12 +81,13 @@ int setup(Z n1, Z n2)
   global::host = h + HALF * (global::s + NVAR);
 
   // Initialize all arrays to -FLT_MAX or -DBL_MAX
-  for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
+  for(Z i = 0; i < n; ++i) h[i] = 0.0; // TODO: set boundary conditions
+                               // -std::numeric_limits<R>::max();
   cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
 
   // Compute floating point operation and bandwidth per step
-  global::flops = 3 * (n1 * n2 * NVAR * 2.0); // assume FMA
+  global::flops = 3 * (n1 * n2 * (8 + NVAR * 2.0)); // assume FMA
   global::bps   = 3 * (m1 * m2 * sizeof(S) * 8 * 1.0 +
                        n1 * n2 * sizeof(S) * 8 * 5.0);
 

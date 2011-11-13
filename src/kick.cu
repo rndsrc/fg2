@@ -17,6 +17,7 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "fg2.h"
+#include "hydro.cuh"
 
 static __device__ void copy(R *dst, const R *src, const Z n)
 {
@@ -39,6 +40,10 @@ static __device__ void ssum(R *dst, const R *src, const R beta, const Z n)
 static __global__ void kernel(R *v, const R *x, const R t, const R beta,
                               Z n1, Z n2, const Z s)
 {
+  // TODO: compute the grid
+  const R d1 = K(1.0) / n1;
+  const R d2 = K(1.0) / n2;
+
   extern __shared__ R shared[]; // dynamic shared variable
   {
     const Z n = blockDim.x;               // inner size
@@ -53,17 +58,30 @@ static __global__ void kernel(R *v, const R *x, const R t, const R beta,
   }
   const Z Count = (n2 + ORDER) * NVAR;
   const Z count = (n2        ) * NVAR;
-  R *in  = shared + (threadIdx.y + ORDER) * Count;
-  R *out = shared +  threadIdx.y          * count;
+
+  R *in     = shared + (threadIdx.y + ORDER) * Count;
+  R *active = shared + (threadIdx.y + HALF ) * Count + HALF * NVAR;
+  R *out    = shared + (threadIdx.y        ) * count;
 
   // Rolling cache (Micikevicius 2009)
   for(Z i = threadIdx.y; i < n1; i += blockDim.y) {
-    // TODO: pre-load and shift cache
+    if(i < blockDim.y) // pre-load cache
+      for(Z j = threadIdx.y; j < ORDER; j += blockDim.y)
+        copy(shared + j * Count, x + (j - ORDER) * s, Count);
+    else // shift cache
+      for(Z j = threadIdx.y; j < ORDER; j += blockDim.y)
+        copy(shared + j * Count, shared + (j + blockDim.y) * Count, Count);
     copy(in, x + i * s, Count);
-    // TODO: really compute the right hand side
-    ((S *)out)[threadIdx.x] = (S){1.0e+3, 1.0e+3, 1.0e+3};;
     __syncthreads();
+
+    const S f = eqns((S *)active + threadIdx.x, d1, d2, n2 + ORDER);
+    __syncthreads();
+
+    if(threadIdx.x < n2) *((S *)out + threadIdx.x) = f;
+    __syncthreads();
+
     ssum(v + i * s, out, beta, count);
+    __syncthreads();
   }
 }
 
