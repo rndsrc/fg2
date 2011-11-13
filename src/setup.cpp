@@ -47,7 +47,9 @@ int setup(Z n1, Z n2)
   int d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
   for(Z h = 0, i = 0, j = 1; i < j && i++ * j < BSZ; ) {
-    j = dev.sharedMemPerBlock / (sizeof(S) * (ORDER + i)) - ORDER;
+    // TODO: compute the optimal shared memory size by counting
+    //       constant memory etc
+    j = (dev.sharedMemPerBlock * 2 / 3) / (sizeof(S) * (ORDER + i)) - ORDER;
     if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
     else j = (j / dev.warpSize) * dev.warpSize;
     if(i * j > h) {
