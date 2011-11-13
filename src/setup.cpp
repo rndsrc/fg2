@@ -87,9 +87,10 @@ int setup(Z n1, Z n2)
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
 
   // Compute floating point operation and bandwidth per step
-  global::flops = 3 * (n1 * n2 * (22 + NVAR * 2.0)); // assume FMA
-  global::bps   = 3 * (m1 * m2 * sizeof(S) * 8 * 1.0 +
-                       n1 * n2 * sizeof(S) * 8 * 5.0);
+  global::flops = 3 * ((n1 * n2) * (22 + NVAR * 2.0)); // assume FMA
+  global::bps   = 3 * ((m1 * m2) *         sizeof(S) * 8 * 1.0 +
+                       (n1 * n2) *         sizeof(S) * 8 * 5.0 +
+                       (m1 + m2) * ORDER * sizeof(S) * 8 * 2.0);
 
   // Return size of device memory
   return 2 * sizeof(R) * n;

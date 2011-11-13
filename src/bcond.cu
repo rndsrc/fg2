@@ -16,20 +16,20 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cuda_runtime.h>
 #include "fg2.h"
 
-void step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
+static void periodic(R *x, R *y, Z off, Z h, Z w)
 {
-  const R alpha[] = {0.0, 1.0/3.0, 3.0/4.0};
-  const R beta [] = {0.0, -5.0/9.0, -153.0/128.0};
-  const R gamma[] = {1.0/3.0, 15.0/16.0, 8.0/15.0};
+  using namespace global;
+  const Z pitch = s * sizeof(R);
+  cudaMemcpy2D(x, pitch, x + off, pitch, w, h, cudaMemcpyDeviceToDevice);
+  cudaMemcpy2D(y + off, pitch, y, pitch, w, h, cudaMemcpyDeviceToDevice);
+}
 
-  for(Z i = 0; i < 3; ++i) {
-    using namespace global;
-    bcond(u); // apply periodic boundary condition
-    kick (v, u, t + dt * alpha[i], beta[i]); // v <- F(u, T) + beta[i] * v
-    drift(u, v,     dt * gamma[i]         ); // u <- u + dt * gamma[i] * v
-  }
-  cudaThreadSynchronize();
+void bcond(R *x)
+{
+  using namespace global;
+  x -= HALF * (s + NVAR);
+  periodic(x, x + HALF * s,    n1 * s,    HALF, (n2 + ORDER) * sizeof(S));
+  periodic(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * sizeof(S));
 }
