@@ -60,6 +60,7 @@ void banner(const char *, char, char);
 void init(S (*)(R, R));
 void dump(Z, const char *);
 
+const char *para(const char *);
 int setup(Z, Z);
 int solve(R, R, Z, Z);
 void step(R, R);

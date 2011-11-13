@@ -38,8 +38,10 @@ int main(int argc, char **argv)
 
   // Home made argument parser
   for(int i = 1; i < argc; ++i) {
+    // Try to set parameter
+    if(strchr(argv[i], '='));
     // Arguments do not start with '-' are input files
-    if(argv[i][0] != '-') input = argv[i];
+    else if(argv[i][0] != '-') input = argv[i];
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
       PARA('d') d  = atoi(argv[++i]); break;
@@ -80,6 +82,15 @@ int main(int argc, char **argv)
         global::g1, global::g2, global::b1, global::b2);
   print(" using %.3gKiB (%.3g%%) of shared memory\n",
         global::sz / 1024.0, 100.0 * global::sz / ssz);
+
+  // Set parameters
+  for(int i = 1; i < argc; ++i)
+    if(strchr(argv[i], '=')) {
+      if(const char *in = para(argv[i]))
+        print("  Parameter    : %s\n", in);
+      else
+        print("  Fail to set  : \"%s\"\n", argv[i]);
+    }
 
   // Setup initial condition or load starting frame from input
   print("  Initialize   : \"%s\"\n", input);
