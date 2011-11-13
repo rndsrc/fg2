@@ -22,7 +22,8 @@ static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
   const R u1 = u->u1, d1_u1 = D1(u1), d2_u1 = D2(u1);
   const R u2 = u->u2, d1_u2 = D1(u2), d2_u2 = D2(u2);
 
-  return (S){-(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2),
-             -(u1 * d1_u1 + u2 * d2_u1 + d1_ld),
-             -(u1 * d1_u2 + u2 * d2_u2 + d2_ld)};
+  return (S){
+    -(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2  ),
+    -(u1 * d1_u1 + u2 * d2_u1 + d1_ld - K(5e-4) * (D11(u1) + D22(u1))),
+    -(u1 * d1_u2 + u2 * d2_u2 + d2_ld - K(5e-4) * (D11(u2) + D22(u2)))};
 }

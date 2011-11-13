@@ -25,7 +25,7 @@ static S Gaussian(R x, R y)
   x -= 0.5;
   y -= 0.5;
 
-  return (S){log(0.1 * exp(-0.5 * (x * x + y * y) / 0.01) + 1.0), 0.0, 0.0};
+  return (S){log(0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1), 0.0, 0.0};
 }
 
 void init(S (*func)(R, R))
