@@ -16,9 +16,10 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+__device__ __constant__ R para_gamma = 5.0 / 3.0;
 __device__ __constant__ R para_nus   = 5e-4; // shear viscosity
 __device__ __constant__ R para_nub   = 0.0;  // bulk  viscosity
-__device__ __constant__ R para_gamma = 5.0 / 3.0;
+__device__ __constant__ R para_kappa = 5e-4; // thermal conductivity
 
 static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
 {
@@ -42,8 +43,9 @@ static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
                  + a * D11(u2) + b * D21(u1) + c * D22(u2)
                  - temp * (d2_le + d2_ld); // 54 FLOP
   const R le_src = gamma_1 *
-    ((para_nus * (s11 * s11 + K(2.0) * s12 * s12 + s22 * s22) * K(2.0) +
-      para_nub * div_u * div_u) / temp - div_u); // 14 FLOP
+    (para_kappa * (D11(le) + D22(le) + d1_le * d1_le + d2_le * d2_le) +
+     (para_nus * (s11 * s11 + K(2.0) * s12 * s12 + s22 * s22) * K(2.0) +
+      para_nub * div_u * div_u) / temp - div_u); // 45 FLOP
 
   return (S){- (u1 * d1_ld + u2 * d2_ld) - div_u,
              - (u1 * d1_u1 + u2 * d2_u1) + u1_src,
