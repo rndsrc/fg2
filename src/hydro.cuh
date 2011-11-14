@@ -17,9 +17,9 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0;
-__device__ __constant__ R para_nus   = 5e-4; // shear viscosity
-__device__ __constant__ R para_nub   = 0.0;  // bulk  viscosity
-__device__ __constant__ R para_kappa = 5e-4; // thermal conductivity
+__device__ __constant__ R para_nus   = 5.0e-4;  // shear viscosity
+__device__ __constant__ R para_nub   = 0.0;     // bulk  viscosity
+__device__ __constant__ R para_kappa = 1.25e-3; // thermal conductivity
 
 static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
 {
