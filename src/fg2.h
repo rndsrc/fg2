@@ -70,7 +70,7 @@ void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 
 struct state {
-  R ld, u1, u2; // ln(density) and velocity
+  R ld, u1, u2, le; // ln(density), velocity, and ln(e)
 };
 
 #endif
