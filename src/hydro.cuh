@@ -43,9 +43,14 @@ static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
   const R diff2 = (K(2.0) * a) * (s12 * d1_ld + s22 * d2_ld)
                 +  a * D11(u2) + b * D21(u1) + c * D22(u2); // 49 FLOP
 
-  return (S){-(u1 * d1_ld + u2 * d2_ld + d1_u1 + d2_u2),
-             -(u1 * d1_u1 + u2 * d2_u1 + d1_p  - diff1),
-             -(u1 * d1_u2 + u2 * d2_u2 + d2_p  - diff2),
-             -(u1 * d1_le + u2 * d2_le +
-                              gamma_1 * (d1_u1 + d2_u2))}; // 25 FLOP
+  const R div_u = d1_u1 + d2_u2;
+  const R vis_heating =
+    (K(2.0) * para_nus * (s11 * s11 + K(2.0) * s12 * s12 + s22 * s22) +
+              para_nub * div_u * div_u) / temp * gamma_1; // 14 FLOP
+
+  return (S){-(u1 * d1_ld + u2 * d2_ld + div_u),
+             -(u1 * d1_u1 + u2 * d2_u1 + d1_p - diff1),
+             -(u1 * d1_u2 + u2 * d2_u2 + d2_p - diff2),
+             -(u1 * d1_le + u2 * d2_le + div_u * gamma_1 - vis_heating)};
+                                                                     // 24 FLOP
 }
