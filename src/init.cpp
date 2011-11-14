@@ -20,16 +20,23 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
+static R poly_gamma = 5.0 / 3.0;
+
 static S Gaussian(R x, R y)
 {
   x -= 0.5;
   y -= 0.5;
 
-  return (S){log(0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1), 0.0, 0.0};
+  const R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
+  const R e = pow(d, poly_gamma) / d;
+
+  return (S){log(d), 0.0, 0.0, log(e)};
 }
 
 void init(S (*func)(R, R))
 {
+  cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
+
   if(!func) func = Gaussian;
 
   using namespace global;
