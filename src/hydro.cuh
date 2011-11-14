@@ -16,12 +16,14 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include "deriv.cuh"
+
 __device__ __constant__ R para_gamma = 5.0 / 3.0;
 __device__ __constant__ R para_nus   = 5.0e-4;  // shear viscosity
 __device__ __constant__ R para_nub   = 0.0;     // bulk  viscosity
 __device__ __constant__ R para_kappa = 1.25e-3; // thermal conductivity
 
-static __device__ S eqns(const S *u, const R d1, const R d2, const Z s)
+static __device__ S eqns(const S *u, const Z s)
 {
   const R gamma_1 = para_gamma - K(1.0), temp = gamma_1 * exp(u->le);
   const R a = para_nus, b = a / K(3.0) + para_nub, c = a + b; // 6 FLOP

@@ -94,6 +94,11 @@ int setup(Z n1, Z n2)
                        (n1 * n2) *         sizeof(S) * 8 * 5.0 +
                        (m1 + m2) * ORDER * sizeof(S) * 8 * 2.0);
 
+  // Set device constant for kernels
+  R Delta[] = {1.0 / n1, 1.0 / n2};
+  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
+  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
+
   // Return size of device memory
   return 2 * sizeof(R) * n;
 }

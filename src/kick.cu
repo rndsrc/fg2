@@ -17,7 +17,6 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "fg2.h"
-#include "der.cuh"
 #include "hydro.cuh"
 
 static __device__ void copy(R *dst, const R *src, const Z n)
@@ -41,10 +40,6 @@ static __device__ void ssum(R *dst, const R *src, const R beta, const Z n)
 static __global__ void kernel(R *v, const R *x, const R t, const R beta,
                               Z n1, Z n2, const Z s)
 {
-  // TODO: compute the grid
-  const R d1 = K(1.0) / n1;
-  const R d2 = K(1.0) / n2;
-
   extern __shared__ R shared[]; // dynamic shared variable
   {
     const Z n = blockDim.x;               // inner size
@@ -75,7 +70,7 @@ static __global__ void kernel(R *v, const R *x, const R t, const R beta,
     copy(in, x + i * s, Count);
     __syncthreads();
 
-    const S f = eqns((S *)active + threadIdx.x, d1, d2, n2 + ORDER);
+    const S f = eqns((S *)active + threadIdx.x, n2 + ORDER);
     __syncthreads();
 
     if(threadIdx.x < n2) *((S *)out + threadIdx.x) = f;
