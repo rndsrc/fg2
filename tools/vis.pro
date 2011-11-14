@@ -27,15 +27,12 @@ pro vis, i
   close, lun & free_lun, lun
 
   data[0,*,*] = exp(data[0,*,*])
-
-  h = size[0] / 2
-  x = (findgen(size[0]) + 0.5) / size[0]
-  y = 0.5 * (data[0,*,h-1] + data[0,*,h])
+  data[3,*,*] = exp(data[3,*,*])
 
   !p.multi=[0,2,2]
   shade_surf, data[0,*,*], charsize=2
-  plot, x, y
   shade_surf, data[1,*,*], charsize=2
   shade_surf, data[2,*,*], charsize=2
+  shade_surf, data[3,*,*], charsize=2
 
 end
