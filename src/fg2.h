@@ -63,7 +63,7 @@ void dump(Z, const char *);
 const char *para(const char *);
 int setup(Z, Z);
 int solve(R, R, Z, Z);
-void step(R, R);
+int step (R, R);
 
 void bcond(R *);
 void kick (R *, const R *, R, R);
