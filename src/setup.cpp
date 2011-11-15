@@ -46,8 +46,8 @@ int setup(Z n1, Z n2)
   // Grid and block sizes for rolling cache kernel
   int d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
-  for(Z h = 0, i = 0, j = 1; i < j && i++ * j < BSZ; ) {
-    j = dev.sharedMemPerBlock / (sizeof(S) * (ORDER + i)) - ORDER;
+  for(Z h = 0, i = 0, j = 1; i < j && ++i * j < dev.regsPerBlock / REG; ) {
+    j = (dev.sharedMemPerBlock - SSZ) / (sizeof(S) * (ORDER + i)) - ORDER;
     if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
     else j = (j / dev.warpSize) * dev.warpSize;
     if(i * j > h) {

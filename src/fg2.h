@@ -19,9 +19,9 @@
 #ifndef FG2_H
 #define FG2_H
 
-#ifndef BSZ
-#define BSZ 256
-#endif
+#define REG  60 // number of regsiter by used by the kick kernel
+#define SSZ  16 // size of system shared memory used by the kick kernel
+#define BSZ 256 // default block size used by the drift kernel
 
 #ifndef ORDER
 #define ORDER 6
@@ -70,7 +70,7 @@ void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 
 struct state {
-  R ld, u1, u2, le; // ln(density), velocity, and ln(e)
+  R ld, u1, u2, le; // ln(density), velocity, and ln(thermal energy)
 };
 
 #endif
