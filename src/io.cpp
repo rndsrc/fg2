@@ -28,13 +28,13 @@ void dump(Z i, const char *ext)
 
   using namespace global;
 
-  const Z size[] = {n1, n2, sizeof(S) / sizeof(R), sizeof(R)};
+  const Z size[] = {n1, n2, NVAR, sizeof(R)};
   fwrite(size, sizeof(Z), 4, file);
 
-  const Z hpitch = n2 * sizeof(S); // no ghost zone in the output
-  const Z dpitch = s  * sizeof(R);
+  const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
+  const Z dpitch = s         * sizeof(R);
   cudaMemcpy2D(host, hpitch, u, dpitch, hpitch, n1, cudaMemcpyDeviceToHost);
-  fwrite(host, sizeof(S), n1 * n2, file);
+  fwrite(host, NVAR * sizeof(R), n1 * n2, file);
 
   fclose(file);
 }
