@@ -40,16 +40,14 @@ int setup(Z n1, Z n2)
 {
   if(atexit(done)) abort();
 
-  Z m1 = (global::n1 = n1) + ORDER;
-  Z m2 = (global::n2 = n2) + ORDER;
+  const Z m1 = (global::n1 = n1) + ORDER;
+  const Z m2 = (global::n2 = n2) + ORDER;
 
   // Grid and block sizes for rolling cache kernel
   int d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
   for(Z h = 0, i = 0, j = 1; i < j && i++ * j < BSZ; ) {
-    // TODO: compute the optimal shared memory size by counting
-    //       constant memory etc
-    j = (dev.sharedMemPerBlock * 2 / 3) / (sizeof(S) * (ORDER + i)) - ORDER;
+    j = dev.sharedMemPerBlock / (sizeof(S) * (ORDER + i)) - ORDER;
     if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
     else j = (j / dev.warpSize) * dev.warpSize;
     if(i * j > h) {
@@ -77,22 +75,26 @@ int setup(Z n1, Z n2)
   global::v = (R *)v + HALF * (global::s + NVAR);
 
   // Allocate host memory
-  Z  n = global::s * m1;
+  const Z n = global::s * m1;
   R *h = (R *)malloc(sizeof(R) * n);
   if(NULL == h) return 0;
   global::host = h + HALF * (global::s + NVAR);
 
   // Initialize all arrays to -FLT_MAX or -DBL_MAX
-  for(Z i = 0; i < n; ++i) h[i] = 0.0; // TODO: set boundary conditions
-                               // -std::numeric_limits<R>::max();
+  for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
   cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
 
   // Compute floating point operation and bandwidth per step
-  global::flops = 3 * ((n1 * n2) * (260 + NVAR * 2.0)); // assume FMA
+  global::flops = 3 * ((n1 * n2) * (256 + NVAR * 2.0)); // assume FMA
   global::bps   = 3 * ((m1 * m2) *         sizeof(S) * 8 * 1.0 +
                        (n1 * n2) *         sizeof(S) * 8 * 5.0 +
                        (m1 + m2) * ORDER * sizeof(S) * 8 * 2.0);
+
+  // Set device constant for kernels
+  const R Delta[] = {1.0 / n1, 1.0 / n2};
+  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
+  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 
   // Return size of device memory
   return 2 * sizeof(R) * n;
