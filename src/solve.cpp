@@ -38,7 +38,11 @@ int solve(R t, R T, Z i, Z n)
       const R dt = std::min(T - t, K(0.5) / 1024); // TODO: dynamical dt
 
       print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], dt);
-      step(t, dt);
+      if(int err = step(t, dt)) {
+        print(" crashed in %d step%s\n", m, m > 1 ? "s" : "");
+        banner(" Abort Simulation ", '=', '=');
+        error("CUDA ERROR: %s\n", cudaGetErrorString((cudaError_t)err));
+      }
 
       t = std::min(t + dt, T);
     }

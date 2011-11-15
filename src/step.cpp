@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-void step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
+int step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
 {
   const R alpha[] = {0.0, 1.0/3.0, 3.0/4.0};
   const R beta [] = {0.0, -5.0/9.0, -153.0/128.0};
@@ -32,4 +32,6 @@ void step(R t, R dt) // 3rd-order ow-storage Runge-Kutta method
     drift(u, v,     dt * gamma[i]         ); // u <- u + dt * gamma[i] * v
   }
   cudaThreadSynchronize();
+
+  return (int)cudaGetLastError(); // cudaError_t is enum; cudaSuccess == 0
 }

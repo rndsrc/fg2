@@ -18,18 +18,19 @@
 
 #include "fg2.h"
 
-static void periodic(R *x, R *y, Z off, Z h, Z w)
+static void periodic(R *x, R *y, Z off, Z h, Z n)
 {
   using namespace global;
   const Z pitch = s * sizeof(R);
-  cudaMemcpy2D(x, pitch, x + off, pitch, w, h, cudaMemcpyDeviceToDevice);
-  cudaMemcpy2D(y + off, pitch, y, pitch, w, h, cudaMemcpyDeviceToDevice);
+  const Z width = n * sizeof(R);
+  cudaMemcpy2D(x, pitch, x + off, pitch, width, h, cudaMemcpyDeviceToDevice);
+  cudaMemcpy2D(y + off, pitch, y, pitch, width, h, cudaMemcpyDeviceToDevice);
 }
 
 void bcond(R *x)
 {
   using namespace global;
   x -= HALF * (s + NVAR);
-  periodic(x, x + HALF * s,    n1 * s,    HALF, (n2 + ORDER) * sizeof(S));
-  periodic(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * sizeof(S));
+  periodic(x, x + HALF * s,    n1 * s,    HALF, (n2 + ORDER) * NVAR);
+  periodic(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * NVAR);
 }
