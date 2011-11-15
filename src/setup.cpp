@@ -44,32 +44,33 @@ int setup(Z n1, Z n2)
   const Z m2 = (global::n2 = n2) + ORDER;
 
   // Grid and block sizes for rolling cache kernel
-  int d; cudaGetDevice(&d);
+  Z d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
-  for(Z h = 0, i = 0, j = 1; i < j && ++i * j < dev.regsPerBlock / REG; ) {
-    j = (dev.sharedMemPerBlock - SSZ) / (sizeof(S) * (ORDER + i)) - ORDER;
-    if(j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock;
-    else j = (j / dev.warpSize) * dev.warpSize;
-    if(i * j > h) {
-      h = i * j;
-      global::b1 = i;
-      global::b2 = j;
-      global::sz = sizeof(S) * (ORDER + i) * (ORDER + j);
-    }
+  for(Z h = 0, i = 1; ; ++i) {
+    Z g = NVAR * sizeof(R) * (ORDER + i);
+    Z j = (dev.sharedMemPerBlock - SYS) / g - ORDER;
+    if(i * j > dev.regsPerBlock / REG) j = dev.regsPerBlock / (REG * i);
+    if(i * j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock / i;
+    j = (j / dev.warpSize) * dev.warpSize; // multiple of warp size
+    if(i * j <= h) break; // if new block size use less threads, break
+    h = i * j;
+    global::b1 = i;
+    global::b2 = j;
+    global::sz = g * (ORDER + j);
   }
   global::g2 = (n2 - 1) / global::b2 + 1;
   global::g1 = (dev.multiProcessorCount - 1) / global::g2 + 1;
 
   // State variable
   void *u; size_t upitch;
-  if(cudaSuccess != cudaMallocPitch(&u, &upitch, sizeof(S) * m2, m1) ||
+  if(cudaSuccess != cudaMallocPitch(&u, &upitch, NVAR * sizeof(R) * m2, m1) ||
      upitch % sizeof(R)) return 0;
   global::s = upitch / sizeof(R);
   global::u = (R *)u + HALF * (global::s + NVAR);
 
   // Storage for finite difference or swap space for finite volume
   void *v; size_t vpitch;
-  if(cudaSuccess != cudaMallocPitch(&v, &vpitch, sizeof(S) * m2, m1) ||
+  if(cudaSuccess != cudaMallocPitch(&v, &vpitch, NVAR * sizeof(R) * m2, m1) ||
      vpitch % sizeof(R)) return 0;
   if(vpitch != upitch) return 0;
   global::v = (R *)v + HALF * (global::s + NVAR);
@@ -87,9 +88,9 @@ int setup(Z n1, Z n2)
 
   // Compute floating point operation and bandwidth per step
   global::flops = 3 * ((n1 * n2) * (256 + NVAR * 2.0)); // assume FMA
-  global::bps   = 3 * ((m1 * m2) *         sizeof(S) * 8 * 1.0 +
-                       (n1 * n2) *         sizeof(S) * 8 * 5.0 +
-                       (m1 + m2) * ORDER * sizeof(S) * 8 * 2.0);
+  global::bps   = 3 * ((m1 * m2) * 1.0 +
+                       (n1 * n2) * 5.0 +
+                       (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
 
   // Set device constant for kernels
   const R Delta[] = {1.0 / n1, 1.0 / n2};

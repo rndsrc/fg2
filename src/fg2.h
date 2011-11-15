@@ -20,7 +20,7 @@
 #define FG2_H
 
 #define REG  60 // number of regsiter by used by the kick kernel
-#define SSZ  16 // size of system shared memory used by the kick kernel
+#define SYS  16 // size of system shared memory used by the kick kernel
 #define BSZ 256 // default block size used by the drift kernel
 
 #ifndef ORDER
