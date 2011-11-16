@@ -35,10 +35,12 @@
 
 typedef int Z;
 #if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
-typedef double R;
+typedef double      R;
+typedef long double E;
 #define K(x) (x)
 #else
-typedef float R;
+typedef float  R;
+typedef double E;
 #define K(x) (x##f)
 #endif
 
@@ -55,15 +57,17 @@ namespace global {
 void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
+int  exist(const char *);
 void banner(const char *, char, char);
 
 void init(S (*)(R, R));
+Z    load(const char *);
 void dump(Z, const char *);
 
 const char *para(const char *);
-int setup(Z, Z);
-int solve(R, R, Z, Z);
-int step (R, R);
+Z   setup(Z, Z);
+int solve(E, E, Z, Z);
+int step (E, E);
 
 void bcond(R *);
 void kick (R *, const R *, R, R);

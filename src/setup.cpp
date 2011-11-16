@@ -36,7 +36,7 @@ static void done(void)
   cudaFree(global::u - HALF * (global::s + NVAR));
 }
 
-int setup(Z n1, Z n2)
+Z setup(const Z n1, const Z n2)
 {
   if(atexit(done)) abort();
 

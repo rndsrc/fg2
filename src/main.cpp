@@ -29,16 +29,16 @@ int main(int argc, char **argv)
 {
   const char *input = "default";
 
-  Z d = 0, n0 = 10, n1 = 1024, n2 = 1024;
+  Z d = 0, n0 = 10, n1 = 1024, n2 = 1024, i;
   R t = 1;
 
   // If "--help" is an argument, print usage and exit
-  for(int i = 1; i < argc; ++i)
+  for(i = 1; i < argc; ++i)
     if(!strcmp(argv[i], "--help")) usage(NULL);
 
   // Home made argument parser
-  for(int i = 1; i < argc; ++i) {
-    // Try to set parameter
+  for(i = 1; i < argc; ++i) {
+    // Check parameter
     if(strchr(argv[i], '='));
     // Arguments do not start with '-' are input files
     else if(argv[i][0] != '-') input = argv[i];
@@ -56,9 +56,9 @@ int main(int argc, char **argv)
 
   // Pick a device, obtain global and shared memory size
   double gsz = 0.0, ssz = 0.0;
-  int count; cudaGetDeviceCount(&count);
-  print("  Device %d/%d   : ", d, count);
-  if(d < count) {
+  cudaGetDeviceCount(&i);
+  print("  Device %d/%d   : ", d, i);
+  if(d < i) {
     if(cudaSuccess == cudaSetDevice(d)) {
       cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
       gsz = dev.totalGlobalMem;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(int sz = setup(n1, n2))
+  if(Z sz = setup(n1, n2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         global::sz / 1024.0, 100.0 * global::sz / ssz);
 
   // Set parameters
-  for(int i = 1; i < argc; ++i)
+  for(i = 1; i < argc; ++i)
     if(strchr(argv[i], '=')) {
       if(const char *in = para(argv[i]))
         print("  Parameter    : %s\n", in);
@@ -93,11 +93,16 @@ int main(int argc, char **argv)
     }
 
   // Setup initial condition or load starting frame from input
-  print("  Initialize   : \"%s\"\n", input);
-  init(NULL); // TODO: if input is a path to a valid file, load input
-  dump(0, "raw");
+  if(exist(input)) {
+    print("  Input file   : \"%s\"\n", input);
+    i = load(input);
+  } else {
+    print("  Initialize   : \"%s\"\n", input);
+    init(NULL); // TODO: if input is a name of a function, initialize
+    dump(i = 0, "raw");
+  }
 
   // Really solve the problem
   print("  Time         : %g with %d frame%s\n", t, n0, n0 > 1 ? "s" : "");
-  return solve(0.0, t, 0, n0);
+  return solve(i * (t / n0), t, i, n0);
 }

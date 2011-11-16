@@ -16,9 +16,10 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <cuda_runtime.h>
 #include "fg2.h"
 
-static void periodic(R *x, R *y, Z off, Z h, Z n)
+static void periodic(R *x, R *y, const Z off, const Z h, const Z n)
 {
   using namespace global;
   const Z pitch = s * sizeof(R);

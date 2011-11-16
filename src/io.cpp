@@ -17,10 +17,41 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-void dump(Z i, const char *ext)
+static Z frame(const char *h)
+{
+  char c;
+  while((int)(c = *h++))
+    if('0' <= c && c <= '9')
+      return atoi(h-1); // get the frame number
+  return 0;
+}
+
+Z load(const char *name)
+{
+  FILE *file = fopen(name, "rb"); // assume checked with exist()
+
+  using namespace global;
+
+  Z size[4];
+  fread(size, sizeof(Z), 4, file);
+  if(size[0] != n1 || size[1] != n2 || size[2] != NVAR || size[3] != sizeof(R))
+    error("input data is not compatible with the setup");
+
+  const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
+  const Z dpitch = s         * sizeof(R);
+  fread(host, NVAR * sizeof(R), n1 * n2, file);
+  cudaMemcpy2D(u, dpitch, host, hpitch, hpitch, n1, cudaMemcpyHostToDevice);
+
+  fclose(file);
+
+  return frame(name);
+}
+
+void dump(const Z i, const char *ext)
 {
   char name[64];
   snprintf(name, sizeof(name), "%04d.%s", i, ext);

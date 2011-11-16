@@ -28,7 +28,7 @@ static __global__ void kernel(R *x, const R *v, const R dt,
   }
 }
 
-void drift(R *x, const R *v, R dt)
+void drift(R *x, const R *v, const R dt)
 {
   const Z n = NVAR * global::n2;
   const dim3 Gsz((n - 1) / BSZ + 1, global::n1);

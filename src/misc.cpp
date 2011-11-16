@@ -20,13 +20,21 @@
 #include <cstring>
 #include "fg2.h"
 
-void banner(const char *title, char l, char r)
+void banner(const char *title, const char l, const char r)
 {
-  int n = strlen(title);
-  int h = (80 - 2 - n) / 2, i;
-  for(i = 0; i < h; ++i) putchar(l);
+  const Z n = strlen(title);
+  const Z h = (80 - 2 - n) / 2;
+  for(Z i = 0; i < h; ++i) putchar(l);
   printf("%s%s", title, (n & 1) ? " " : "");
-  for(i = 0; i < h; ++i) putchar(r);
+  for(Z i = 0; i < h; ++i) putchar(r);
   putchar('\n');
   fflush(stdout);
+}
+
+int exist(const char *name)
+{
+  FILE *file = fopen(name, "r");
+  if(!file) return 0;
+  fclose(file);
+  return 1;
 }

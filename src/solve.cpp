@@ -20,44 +20,44 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-int solve(R t, R T, Z i, Z n)
-{
-  const char rotor[] = "-/|\\";
+static const char rotor[] = "-/|\\";
 
-  cudaEvent_t t0, t1;
-  cudaEventCreate(&t0);
-  cudaEventCreate(&t1);
+int solve(E t, const E T, Z i, const Z n)
+{
+  cudaEvent_t c0, c1;
+  cudaEventCreate(&c0);
+  cudaEventCreate(&c1);
   banner(" Start Simulation ", '=', '=');
 
-  for(R dT = (T - t) / n; i++ < n; dump(i, "raw")) {
-    Z m = 0;
+  for(const E Dt = (T - t) / (n - i); i++ < n; dump(i, "raw")) {
+    const E target = T - (n - i) * Dt; Z m = 0;
 
-    print("%4d:%7.2f ->%7.2f             ", i, t, T = dT * i);
-    cudaEventRecord(t0, 0);
-    while(t < T) {
-      const R dt = std::min(T - t, K(0.5) / 1024); // TODO: dynamical dt
+    print("%4d:%7.2f ->%7.2f             ", i, (double)t, (double)target);
+    cudaEventRecord(c0, 0);
+    while(t < target) {
+      const E dt = std::min(target - t, (E)(0.5 / 1024)); // TODO: dynamical dt
 
-      print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], dt);
+      print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], (double)dt);
       if(int err = step(t, dt)) {
         print(" crashed in %d step%s\n", m, m > 1 ? "s" : "");
         banner(" Abort Simulation ", '=', '=');
         error("CUDA ERROR: %s\n", cudaGetErrorString((cudaError_t)err));
       }
 
-      t = std::min(t + dt, T);
+      t = std::min(t + dt, target);
     }
-    cudaEventRecord(t1, 0);
-    cudaEventSynchronize(t1);
+    cudaEventRecord(c1, 0);
+    cudaEventSynchronize(c1);
 
     using namespace global;
-    float ns; cudaEventElapsedTime(&ns, t0, t1); ns *= 1e6 / m;
+    float ns; cudaEventElapsedTime(&ns, c0, c1); ns *= 1.0e6 / m;
     print("\b\b\b\b\b\b\b\b\b\b\b\b\b, %d step%s "
           "(%.3fms/step, %.3fGflops, %.3fGbps)\n",
-          m, m > 1 ? "s" : "", 1e-6 * ns, flops / ns, bps / ns);
+          m, m > 1 ? "s" : "", 1.0e-6 * ns, flops / ns, bps / ns);
   }
 
   banner(" Done  Simulation ", '=', '=');
-  cudaEventDestroy(t1);
-  cudaEventDestroy(t0);
+  cudaEventDestroy(c1);
+  cudaEventDestroy(c0);
   return 0;
 }
