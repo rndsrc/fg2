@@ -30,3 +30,11 @@ void banner(const char *title, char l, char r)
   putchar('\n');
   fflush(stdout);
 }
+
+int exist(const char *name)
+{
+  FILE *file = fopen(name, "r");
+  if(!file) return 0;
+  fclose(file);
+  return 1;
+}

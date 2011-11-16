@@ -55,9 +55,11 @@ namespace global {
 void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
+int  exist(const char *);
 void banner(const char *, char, char);
 
 void init(S (*)(R, R));
+int  load(const char *);
 void dump(Z, const char *);
 
 const char *para(const char *);

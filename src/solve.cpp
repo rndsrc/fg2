@@ -29,7 +29,7 @@ int solve(R t, R T, Z i, Z n)
   cudaEventCreate(&t1);
   banner(" Start Simulation ", '=', '=');
 
-  for(R dT = (T - t) / n; i++ < n; dump(i, "raw")) {
+  for(R dT = (T - t) / (n - i); i++ < n; dump(i, "raw")) {
     Z m = 0;
 
     print("%4d:%7.2f ->%7.2f             ", i, t, T = dT * i);

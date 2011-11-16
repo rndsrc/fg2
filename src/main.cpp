@@ -29,15 +29,15 @@ int main(int argc, char **argv)
 {
   const char *input = "default";
 
-  Z d = 0, n0 = 10, n1 = 1024, n2 = 1024;
+  Z d = 0, n0 = 10, n1 = 1024, n2 = 1024, i;
   R t = 1;
 
   // If "--help" is an argument, print usage and exit
-  for(int i = 1; i < argc; ++i)
+  for(i = 1; i < argc; ++i)
     if(!strcmp(argv[i], "--help")) usage(NULL);
 
   // Home made argument parser
-  for(int i = 1; i < argc; ++i) {
+  for(i = 1; i < argc; ++i) {
     // Try to set parameter
     if(strchr(argv[i], '='));
     // Arguments do not start with '-' are input files
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         global::sz / 1024.0, 100.0 * global::sz / ssz);
 
   // Set parameters
-  for(int i = 1; i < argc; ++i)
+  for(i = 1; i < argc; ++i)
     if(strchr(argv[i], '=')) {
       if(const char *in = para(argv[i]))
         print("  Parameter    : %s\n", in);
@@ -93,11 +93,16 @@ int main(int argc, char **argv)
     }
 
   // Setup initial condition or load starting frame from input
-  print("  Initialize   : \"%s\"\n", input);
-  init(NULL); // TODO: if input is a path to a valid file, load input
-  dump(0, "raw");
+  if(exist(input)) {
+    print("  Input file   : \"%s\"\n", input);
+    i = load(input);
+  } else {
+    print("  Initialize   : \"%s\"\n", input);
+    init(NULL); // TODO: if input is a name of a function, initialize
+    dump(i = 0, "raw");
+  }
 
   // Really solve the problem
   print("  Time         : %g with %d frame%s\n", t, n0, n0 > 1 ? "s" : "");
-  return solve(0.0, t, 0, n0);
+  return solve(i * (t / n0), t, i, n0);
 }
