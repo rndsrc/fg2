@@ -28,10 +28,10 @@ const char *para(const char *in)
   sym[5] = '\0'; // necessary because sym is static
 
   while(*in == '-') ++in; // skip leading dashes
-  int n = strchr(in, '=') - in;
+  const Z n = strchr(in, '=') - in;
   strncat(sym, in, n);
 
-  R val = atof(in + n + 1);
+  const R val = atof(in + n + 1);
   if(cudaMemcpyToSymbol(sym, &val, sizeof(R)) == cudaSuccess) {
     sprintf(sym + 5 + n, " = %g", val);
     return sym + 5;

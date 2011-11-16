@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-int step(E t, E dt) // 3rd-order ow-storage Runge-Kutta method
+int step(const E t, const E dt) // 3rd-order ow-storage Runge-Kutta method
 {
   const E alpha[] = {0.0, 1.0/3.0, 3.0/4.0};
   const E beta [] = {0.0, -5.0/9.0, -153.0/128.0};

@@ -49,7 +49,7 @@ void init(S (*func)(R, R))
     }
   }
 
-  const Z hpitch = n2 * sizeof(S);
-  const Z dpitch = s  * sizeof(R);
+  const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
+  const Z dpitch = s         * sizeof(R);
   cudaMemcpy2D(u, dpitch, host, hpitch, hpitch, n1, cudaMemcpyHostToDevice);
 }

@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
   // Home made argument parser
   for(i = 1; i < argc; ++i) {
-    // Try to set parameter
+    // Check parameter
     if(strchr(argv[i], '='));
     // Arguments do not start with '-' are input files
     else if(argv[i][0] != '-') input = argv[i];
@@ -56,9 +56,9 @@ int main(int argc, char **argv)
 
   // Pick a device, obtain global and shared memory size
   double gsz = 0.0, ssz = 0.0;
-  int count; cudaGetDeviceCount(&count);
-  print("  Device %d/%d   : ", d, count);
-  if(d < count) {
+  cudaGetDeviceCount(&i);
+  print("  Device %d/%d   : ", d, i);
+  if(d < i) {
     if(cudaSuccess == cudaSetDevice(d)) {
       cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
       gsz = dev.totalGlobalMem;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(int sz = setup(n1, n2))
+  if(Z sz = setup(n1, n2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else

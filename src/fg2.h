@@ -61,11 +61,11 @@ int  exist(const char *);
 void banner(const char *, char, char);
 
 void init(S (*)(R, R));
-int  load(const char *);
+Z    load(const char *);
 void dump(Z, const char *);
 
 const char *para(const char *);
-int setup(Z, Z);
+Z   setup(Z, Z);
 int solve(E, E, Z, Z);
 int step (E, E);
 

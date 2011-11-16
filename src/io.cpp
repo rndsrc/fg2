@@ -21,7 +21,7 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-static int frame(const char *h)
+static Z frame(const char *h)
 {
   char c;
   while((int)(c = *h++))
@@ -30,7 +30,7 @@ static int frame(const char *h)
   return 0;
 }
 
-int load(const char *name)
+Z load(const char *name)
 {
   FILE *file = fopen(name, "rb"); // assume checked with exist()
 
@@ -41,8 +41,8 @@ int load(const char *name)
   if(size[0] != n1 || size[1] != n2 || size[2] != NVAR || size[3] != sizeof(R))
     error("input data is not compatible with the setup");
 
-  const Z dpitch = s         * sizeof(R);
   const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
+  const Z dpitch = s         * sizeof(R);
   fread(host, NVAR * sizeof(R), n1 * n2, file);
   cudaMemcpy2D(u, dpitch, host, hpitch, hpitch, n1, cudaMemcpyHostToDevice);
 
@@ -51,7 +51,7 @@ int load(const char *name)
   return frame(name);
 }
 
-void dump(Z i, const char *ext)
+void dump(const Z i, const char *ext)
 {
   char name[64];
   snprintf(name, sizeof(name), "%04d.%s", i, ext);

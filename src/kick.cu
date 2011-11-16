@@ -81,7 +81,7 @@ static __global__ void kernel(R *v, const R *x, const R t, const R beta,
   }
 }
 
-void kick(R *v, const R *x, R t, R b)
+void kick(R *v, const R *x, const R t, const R b)
 {
   using namespace global;
   const dim3 Gsz(g2, g1);
