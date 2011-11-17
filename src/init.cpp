@@ -24,27 +24,22 @@ static R poly_gamma = 5.0 / 3.0;
 
 static S Gaussian(R x, R y)
 {
-  x -= 0.5;
-  y -= 0.5;
-
   const R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
   const R e = pow(d, poly_gamma) / d;
-
   return (S){log(d), 0.0, 0.0, log(e)};
 }
 
-void init(S (*func)(R, R))
+void init(const char *name)
 {
+  S (*func)(R, R) = Gaussian; // default
+
   cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
 
-  if(!func) func = Gaussian;
-
   using namespace global;
-
   for(Z i = 0; i < n1; ++i) {
-    const R x = (i + 0.5) / n1;
+    const R x = (i + 0.5) / n1 - 0.5;
     for(Z j = 0; j < n2; ++j) {
-      const R y = (j + 0.5) /n2;
+      const R y = (j + 0.5) /n2 - 0.5;
       ((S *)host)[i * n2 + j] = func(x, y);
     }
   }
