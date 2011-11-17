@@ -16,6 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <cstring>
 #include <cmath>
 #include <cuda_runtime.h>
 #include "fg2.h"
@@ -29,9 +30,25 @@ static S Gaussian(R x, R y)
   return (S){log(d), 0.0, 0.0, log(e)};
 }
 
+static S Sod(R x, R y)
+{
+  R d, P;
+  if(fmod(x - 2 * y + K(1.5), K(1.0)) < 0.5) {
+    d = 1.0;
+    P = 1.0;
+  } else {
+    d = 0.125;
+    P = 0.1;
+  }
+  R e = P / d / (poly_gamma - 1.0);
+  return (S){log(d), 0.0, 0.0, log(e)};
+}
+
 void init(const char *name)
 {
   S (*func)(R, R) = Gaussian; // default
+
+  if(!strcmp(name, "Sod")) func = Sod; // Sod shock tube
 
   cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
 
