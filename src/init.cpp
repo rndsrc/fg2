@@ -16,6 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <cuda_runtime.h>
@@ -25,9 +26,23 @@ static R poly_gamma = 5.0 / 3.0;
 
 static S Gaussian(R x, R y)
 {
-  const R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
-  const R e = pow(d, poly_gamma) / d;
+  R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
+  R e = pow(d, poly_gamma) / d;
   return (S){log(d), 0.0, 0.0, log(e)};
+}
+
+static S KH(R x, R y)
+{
+  R d, u;
+  if(fabs(y) < 0.25) {
+    d =  2.0;
+    u =  0.5 + 0.01 * rand() / RAND_MAX - 0.005;
+  } else {
+    d =  1.0;
+    u = -0.5 + 0.01 * rand() / RAND_MAX - 0.005;
+  }
+  R e = 2.5 / d / (poly_gamma - 1.0);
+  return (S){log(d), u, 0.0, log(e)};
 }
 
 static S Sod(R x, R y)
@@ -48,6 +63,7 @@ void init(const char *name)
 {
   S (*func)(R, R) = Gaussian; // default
 
+  if(!strcmp(name, "KH" )) func = KH;  // Kelvin-Helmholtz instability
   if(!strcmp(name, "Sod")) func = Sod; // Sod shock tube
 
   cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
