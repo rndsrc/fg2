@@ -26,13 +26,15 @@ pro vis, i
   readu, lun, data
   close, lun & free_lun, lun
 
+  x = (dindgen(size[0]) + 0.5) / size[0] - 0.5
+  y = (dindgen(size[1]) + 0.5) / size[1] - 0.5
   data[0,*,*] = exp(data[0,*,*])
   data[3,*,*] = exp(data[3,*,*])
 
   !p.multi=[0,2,2]
-  shade_surf, data[0,*,*], charsize=2
-  shade_surf, data[1,*,*], charsize=2
-  shade_surf, data[2,*,*], charsize=2
-  shade_surf, data[3,*,*], charsize=2
+  shade_surf, transpose(reform(data[0,*,*])), x, y, charsize=2
+  shade_surf, transpose(reform(data[1,*,*])), x, y, charsize=2
+  shade_surf, transpose(reform(data[2,*,*])), x, y, charsize=2
+  shade_surf, transpose(reform(data[3,*,*])), x, y, charsize=2
 
 end
