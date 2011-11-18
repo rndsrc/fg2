@@ -19,6 +19,7 @@
 #include "deriv.cuh"
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0;
+__device__ __constant__ R para_dd    = 0.0;    // density diffusion
 __device__ __constant__ R para_nus   = 2.0e-4; // shear viscosity
 __device__ __constant__ R para_nub   = 0.0;    // bulk  viscosity
 __device__ __constant__ R para_kappa = 5.0e-4; // thermal conductivity
@@ -77,10 +78,11 @@ static __device__ S eqns(const S *u, const Z s)
        para_nub * div_u * div_u);
   }
 
-  // Thermal conductivity: 32 FLOP
+  // Density diffusion and thermal conductivity: 63 FLOP
   {
-    dt.le += (gamma_1 * para_kappa) *
-      (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
+    const R ed = gamma_1 * para_kappa;
+    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld + d2.ld);
+    dt.le +=      ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
   }
 
   return dt;

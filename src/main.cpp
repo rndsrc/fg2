@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     i = load(input);
   } else {
     print("  Initialize   : \"%s\"\n", input);
-    init(NULL); // TODO: if input is a name of a function, initialize
+    init(input);
     dump(i = 0, "raw");
   }
 

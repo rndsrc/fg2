@@ -60,7 +60,7 @@ void usage(const char *);
 int  exist(const char *);
 void banner(const char *, char, char);
 
-void init(S (*)(R, R));
+void init(const char *);
 Z    load(const char *);
 void dump(Z, const char *);
 
