@@ -24,6 +24,14 @@
 
 static R poly_gamma = 5.0 / 3.0;
 
+static S bow(R x, R y) // need to turn on density diffusion
+{
+  R d = 9.9 / (exp( 32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0) + 0.1;
+  R u = 1.0 / (exp(-32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0);
+  R e = 0.01 / d / (poly_gamma - 1.0);
+  return (S){log(d), u, 0.0, log(e)};
+}
+
 static S Gaussian(R x, R y)
 {
   R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
@@ -63,6 +71,7 @@ void init(const char *name)
 {
   S (*func)(R, R) = Gaussian; // default
 
+  if(!strcmp(name, "bow")) func = bow; // Bow shock
   if(!strcmp(name, "KH" )) func = KH;  // Kelvin-Helmholtz instability
   if(!strcmp(name, "Sod")) func = Sod; // Sod shock tube
 
