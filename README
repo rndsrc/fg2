@@ -11,3 +11,25 @@ ARCHITECTURE: on a typical stream processor such as an nVidia GPU,
   so it can hide latency as much as possible.  We use a modified
   version of "rolling cache" method (Micikevicius 2009) to optimize
   our GPU kernel.
+
+PERFORMANCE: we have done some benchmarks of fg2 on the Tesla C2050
+  card.  Using the hydrodynamics scheme with single precision, the
+  automatically chosen block size is 2 x 256.  To ensure the 14
+  multiprocessors are all used, we choose a grid size 3584 x 3584.
+
+  The timing measures 129 ms/step, or 10 ns/cell/step.  The estimate
+  speed and bandwidth are 88.0 Gflops and 229 Gbps = 28.6 GBps,
+  respectively.  The time spend in diffident part of the algorithm is
+  listed in the following table:
+
+    bcond():   0.3 ms/step                             0.2%
+    kick (): 110.0 ms/step -+- read:    17.8 ms/step  13.8%
+                            |  shift:   21.5 ms/step  16.7%
+                            |  compute: 48.9 ms/step  37.9%
+                            +- write:   21.8 ms/step  16.9%
+    drift():  18.7 ms/step                            14.5%
+
+  There is no a single bottleneck in the algorithm.  Indeed, the
+  "compute" kernel listed above operates in approximately 250 Gflops.
+  Optimizing it to the peak performance will increase the speed to
+  92.3 ms/step, which is only about 28% speed up.
