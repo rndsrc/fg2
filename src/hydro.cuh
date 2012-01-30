@@ -22,7 +22,7 @@ __device__ __constant__ R para_nus   = 2.0e-4;    // shear viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk  viscosity
 __device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
 
-static __device__ S eqns(const S *u, const Z s)
+static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dt = {0.0, 0.0, 0.0, 0.0};
 
@@ -82,6 +82,13 @@ static __device__ S eqns(const S *u, const Z s)
     dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld + d2.ld);
     dt.le +=      ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
   }
+
+  // External source terms
+  /* {
+    const R x = (i + K(0.5)) * Delta1 - K(0.5);
+    const R y = (j + K(0.5)) * Delta2 - K(0.5);
+    dt.le += exp(- 20 * x * x - 80 * y * y); // heat source
+  } */
 
   return dt;
 }

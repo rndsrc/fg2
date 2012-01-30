@@ -60,7 +60,7 @@ static __global__ void kernel(R *v, const R *x, const R t, const R beta,
   R *active = shared + (threadIdx.y + HALF ) * Count + HALF * NVAR;
   R *out    = shared + (threadIdx.y        ) * count;
 
-  // Rolling cache (Micikevicius 2009)
+  // Modified rolling cache (Micikevicius 2009)
   for(Z i = threadIdx.y; i < n1; i += blockDim.y) {
     if(i < blockDim.y) // pre-load cache
       for(Z j = threadIdx.y; j < ORDER; j += blockDim.y)
@@ -71,7 +71,9 @@ static __global__ void kernel(R *v, const R *x, const R t, const R beta,
     copy(in, x + i * s, Count);
     __syncthreads();
 
-    const S f = eqns((S *)active + threadIdx.x, n2 + ORDER);
+    const Z i1 = blockIdx.y * n1 + i;
+    const Z i2 = blockIdx.x * blockDim.x + threadIdx.x;
+    const S f  = eqns((S *)active + threadIdx.x, i1, i2, n2 + ORDER);
     __syncthreads();
 
     if(threadIdx.x < n2) *((S *)out + threadIdx.x) = f;
