@@ -31,8 +31,9 @@ Try `hydro --help` for more information.\n", bad);
 \n\
       --help        display this help and exit\n\
   -d                specify device id\n\
+  -l                total time, box size\n\
   -n                number of frames and grids\n\
-  -t                total time\n\
+  parameter=val     set parameters in a particular scheme\n\
 \n\
 Report bugs to <ckch@nordita.org>.\n");
 

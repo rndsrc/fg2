@@ -23,7 +23,7 @@
 
 namespace global {
   Z n1, n2, s;
-  R *u, *v, *host = NULL;
+  R l1, l2, *u, *v, *host = NULL;
   Z g1, g2, b1, b2, sz;
   double flops, bps;
 }
@@ -36,12 +36,16 @@ static void done(void)
   cudaFree(global::u - HALF * (global::s + NVAR));
 }
 
-Z setup(const Z n1, const Z n2)
+Z setup(const Z n1, const Z n2, const R l1, const R l2)
 {
   if(atexit(done)) abort();
 
-  const Z m1 = (global::n1 = n1) + ORDER;
-  const Z m2 = (global::n2 = n2) + ORDER;
+  global::n1 = n1;
+  global::n2 = n2;
+  global::l1 = l1;
+  global::l2 = l2;
+  const Z m1 = n1 + ORDER;
+  const Z m2 = n2 + ORDER;
 
   // Grid and block sizes for rolling cache kernel
   Z d; cudaGetDevice(&d);
@@ -93,7 +97,7 @@ Z setup(const Z n1, const Z n2)
                        (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
 
   // Set device constant for kernels
-  const R Delta[] = {1.0 / n1, 1.0 / n2};
+  const R Delta[] = {l1 / n1, l2 / n2};
   cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
   cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 

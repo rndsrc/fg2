@@ -22,25 +22,41 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-static R poly_gamma = 5.0 / 3.0;
+static R poly_gamma;
+
+static R Fermi_Dirac(R x, R d)
+{
+  return 1.0 / (exp(x / d) + 1.0);
+}
+
+static S blast(R x, R y)
+{
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
+  R e = ((x * x + y * y < 0.01) ? 1.0 : 0.01) / (poly_gamma - 1.0);
+
+  return (S){0.0, 0.0, 0.0, log(e)};
+}
 
 static S bow(R x, R y) // need to turn on density diffusion
 {
-  R d = 9.9 / (exp( 32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0) + 0.1;
-  R u = 1.0 / (exp(-32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0);
-  R e = 0.01 / d / (poly_gamma - 1.0);
-  return (S){log(d), u, 0.0, log(e)};
-}
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
 
-static S Gaussian(R x, R y)
-{
-  R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
-  R e = pow(d, poly_gamma) / d;
-  return (S){log(d), 0.0, 0.0, log(e)};
+  R r = sqrt(x * x + y * y);
+  R d = 9.9 * Fermi_Dirac(r - 0.01, 0.001) + 0.1;
+  R u = (10.0 / d - 1.0) / 99.0;
+  R e = 0.01 / d / (poly_gamma - 1.0);
+
+  return (S){log(d), u, 0.0, log(e)};
 }
 
 static S KH(R x, R y)
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d, u;
   if(fabs(y) < 0.25) {
     d =  2.0;
@@ -50,11 +66,15 @@ static S KH(R x, R y)
     u = -0.5 + 0.01 * rand() / RAND_MAX - 0.005;
   }
   R e = 2.5 / d / (poly_gamma - 1.0);
+
   return (S){log(d), u, 0.0, log(e)};
 }
 
 static S Sod(R x, R y)
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d, P;
   if(fmod(x - 2 * y + K(1.5), K(1.0)) < 0.5) {
     d = 1.0;
@@ -64,24 +84,31 @@ static S Sod(R x, R y)
     P = 0.1;
   }
   R e = P / d / (poly_gamma - 1.0);
+
   return (S){log(d), 0.0, 0.0, log(e)};
+}
+
+static S zeros(R x, R y)
+{
+  return (S){0.0, 0.0, 0.0, 0.0};
 }
 
 void init(const char *name)
 {
-  S (*func)(R, R) = Gaussian; // default
+  S (*func)(R, R) = zeros; // default, note ln(d) = ln(e) = 0 => d = e = 1
 
-  if(!strcmp(name, "bow")) func = bow; // Bow shock
-  if(!strcmp(name, "KH" )) func = KH;  // Kelvin-Helmholtz instability
-  if(!strcmp(name, "Sod")) func = Sod; // Sod shock tube
+  if(!strcmp(name, "blast")) func = blast; // Gaussian blast wave
+  if(!strcmp(name, "bow"  )) func = bow;   // Bow shock
+  if(!strcmp(name, "KH"   )) func = KH;    // Kelvin-Helmholtz instability
+  if(!strcmp(name, "Sod"  )) func = Sod;   // Sod shock tube
 
   cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
 
   using namespace global;
   for(Z i = 0; i < n1; ++i) {
-    const R x = (i + 0.5) / n1 - 0.5;
+    const R x = l1 * (i + 0.5) / n1;
     for(Z j = 0; j < n2; ++j) {
-      const R y = (j + 0.5) /n2 - 0.5;
+      const R y = l2 * (j + 0.5) / n2;
       ((S *)host)[i * n2 + j] = func(x, y);
     }
   }
