@@ -17,6 +17,7 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "fg2.h"
+#include "deriv.cuh"
 #include "hydro.cuh"
 
 static __device__ void copy(R *dst, const R *src, const Z n)
