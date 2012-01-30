@@ -26,21 +26,32 @@ static R poly_gamma = 5.0 / 3.0;
 
 static S bow(R x, R y) // need to turn on density diffusion
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d = 9.9 / (exp( 32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0) + 0.1;
   R u = 1.0 / (exp(-32.0 * (32.0 * sqrt(x * x + y * y) - 1.0)) + 1.0);
   R e = 0.01 / d / (poly_gamma - 1.0);
+
   return (S){log(d), u, 0.0, log(e)};
 }
 
 static S Gaussian(R x, R y)
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d = 0.9 * exp(-0.5 * (x * x + y * y) / 0.01) + 0.1;
   R e = pow(d, poly_gamma) / d;
+
   return (S){log(d), 0.0, 0.0, log(e)};
 }
 
 static S KH(R x, R y)
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d, u;
   if(fabs(y) < 0.25) {
     d =  2.0;
@@ -50,11 +61,15 @@ static S KH(R x, R y)
     u = -0.5 + 0.01 * rand() / RAND_MAX - 0.005;
   }
   R e = 2.5 / d / (poly_gamma - 1.0);
+
   return (S){log(d), u, 0.0, log(e)};
 }
 
 static S Sod(R x, R y)
 {
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
   R d, P;
   if(fmod(x - 2 * y + K(1.5), K(1.0)) < 0.5) {
     d = 1.0;
@@ -64,6 +79,7 @@ static S Sod(R x, R y)
     P = 0.1;
   }
   R e = P / d / (poly_gamma - 1.0);
+
   return (S){log(d), 0.0, 0.0, log(e)};
 }
 
@@ -79,9 +95,9 @@ void init(const char *name)
 
   using namespace global;
   for(Z i = 0; i < n1; ++i) {
-    const R x = (i + 0.5) / n1 - 0.5;
+    const R x = l1 * (i + 0.5) / n1;
     for(Z j = 0; j < n2; ++j) {
-      const R y = (j + 0.5) /n2 - 0.5;
+      const R y = l2 * (j + 0.5) / n2;
       ((S *)host)[i * n2 + j] = func(x, y);
     }
   }

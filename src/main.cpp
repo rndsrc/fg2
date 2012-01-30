@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 {
   const char *input = "default";
 
-  Z d = 0, n0 = 10, n1 = 1024, n2 = 1024, i;
-  R t = 1;
+  Z n0 = 10,   n1 = 1024, n2 = 1024, d = 0, i;
+  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0;
 
   // If "--help" is an argument, print usage and exit
   for(i = 1; i < argc; ++i)
@@ -45,10 +45,12 @@ int main(int argc, char **argv)
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
       PARA('d') d  = atoi(argv[++i]); break;
+      PARA('l') l0 = atof(argv[++i]); BREAK;
+           l2 = l1 = atof(argv[++i]); BREAK;
+                l2 = atof(argv[++i]); break;
       PARA('n') n0 = atoi(argv[++i]); BREAK;
            n2 = n1 = atoi(argv[++i]); BREAK;
                 n2 = atoi(argv[++i]); break;
-      PARA('t') t  = atof(argv[++i]); break;
       default : ignore : usage(argv[i]);
     }
   }
@@ -72,7 +74,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(Z sz = setup(n1, n2))
+  if(Z sz = setup(n1, n2, l1, l2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else
@@ -103,6 +105,6 @@ int main(int argc, char **argv)
   }
 
   // Really solve the problem
-  print("  Time         : %g with %d frame%s\n", t, n0, n0 > 1 ? "s" : "");
-  return solve(i * (t / n0), t, i, n0);
+  print("  Time         : %g with %d frame%s\n", l0, n0, n0 > 1 ? "s" : "");
+  return solve(i * (l0 / n0), l0, i, n0);
 }
