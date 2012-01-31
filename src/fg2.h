@@ -33,6 +33,9 @@
 #define HALF ((ORDER) / 2)
 #endif
 
+#define STR1NG1ZE(x) #x
+#define STRINGIZE(x) STR1NG1ZE(x)
+
 typedef int Z;
 #if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
 typedef double      R;
@@ -77,4 +80,4 @@ struct state {
   R ld, u1, u2, le; // ln(density), velocity, and ln(thermal energy)
 };
 
-#endif
+#endif // FG2_H
