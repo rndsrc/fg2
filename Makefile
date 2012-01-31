@@ -6,7 +6,7 @@ LDFLAGS = $(addprefix -Xlinker , -rpath $(CUDA)/lib)$(AP64)
 CFLAGS  = $(addprefix --compiler-options , -Wall) -O3
 
 help:
-	@echo 'The follow system of equations is avilable:'
+	@echo 'The follow systems of equations are avilable:'
 	@echo
 	@c=0; for F in src/*.cuh; do  \
 	   f=$${F##src/};             \
@@ -28,6 +28,11 @@ help:
 	 fi
 
 clean:
-	-rm -f bin/hydro
-	-rm -f */*~
+	@echo -n 'Clean up... '
+	@for F in src/*.cuh; do   \
+	   f=$${F##src/};         \
+	   rm -f bin/$${f%%.cuh}; \
+	 done
+	@rm -f src/*~
 	@if [ -z "`ls bin 2>&1`" ]; then rmdir bin; fi
+	@echo 'DONE'
