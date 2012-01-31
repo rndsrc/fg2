@@ -27,7 +27,7 @@ int step(const E t, const E dt) // 3rd-order ow-storage Runge-Kutta method
 
   for(Z i = 0; i < 3; ++i) {
     using namespace global;
-    bcond(u); // apply periodic boundary condition
+    bcond(u, 0); // apply periodic boundary condition
     kick (v, u, t + dt * alpha[i], beta[i]); // v <- F(u, T) + beta[i] * v
     drift(u, v,     dt * gamma[i]         ); // u <- u + dt * gamma[i] * v
   }

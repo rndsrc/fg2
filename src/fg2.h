@@ -71,7 +71,7 @@ int solve(E, E, Z, Z);
 E   getdt(void);
 int step (E, E);
 
-void bcond(R *);
+void bcond(R *, const int);
 void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 

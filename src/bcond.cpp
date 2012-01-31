@@ -42,8 +42,24 @@ static void periodic2(R *x)
   shuffle(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * NVAR);
 }
 
-void bcond(R *x)
+static void Neumann1(R *x)
 {
-  periodic1(x);
+  using namespace global;
+  const Z width = (n2 + ORDER) * NVAR * sizeof(R);
+  x -= HALF * NVAR;
+  for(Z i = 0; i < HALF; ++i)
+    cudaMemcpy(x - (i + 1) * s,
+               x + (i    ) * s, width, cudaMemcpyDeviceToDevice);
+  x += n1 * s;
+  for(Z i = 0; i < HALF; ++i)
+    cudaMemcpy(x + (i    ) * s,
+               x - (i + 1) * s, width, cudaMemcpyDeviceToDevice);
+}
+
+void bcond(R *x, const int p1)
+{
+  if(p1) periodic1(x);
+  else   Neumann1 (x);
+
   periodic2(x);
 }
