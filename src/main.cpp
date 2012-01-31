@@ -30,7 +30,7 @@ int main(int argc, char **argv)
   const char *input = "default";
 
   Z n0 = 10,   n1 = 1024, n2 = 1024, d = 0, i;
-  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0;
+  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0,  c = 0.5;
 
   // If "--help" is an argument, print usage and exit
   for(i = 1; i < argc; ++i)
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
     else if(argv[i][0] != '-') input = argv[i];
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
+      PARA('c') c  = atof(argv[++i]); break;
       PARA('d') d  = atoi(argv[++i]); break;
       PARA('l') l0 = atof(argv[++i]); BREAK;
            l2 = l1 = atof(argv[++i]); BREAK;
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(Z sz = setup(n1, n2, l1, l2))
+  if(Z sz = setup(c, l1, l2, n1, n2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else

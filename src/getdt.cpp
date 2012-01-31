@@ -16,22 +16,14 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cuda_runtime.h>
+#include <cstdlib>
 #include "fg2.h"
 
-static void periodic(R *x, R *y, const Z off, const Z h, const Z n)
+E getdt(void)
 {
   using namespace global;
-  const Z pitch = s * sizeof(R);
-  const Z width = n * sizeof(R);
-  cudaMemcpy2D(x, pitch, x + off, pitch, width, h, cudaMemcpyDeviceToDevice);
-  cudaMemcpy2D(y + off, pitch, y, pitch, width, h, cudaMemcpyDeviceToDevice);
-}
 
-void bcond(R *x)
-{
-  using namespace global;
-  x -= HALF * (s + NVAR);
-  periodic(x, x + HALF * s,    n1 * s,    HALF, (n2 + ORDER) * NVAR);
-  periodic(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * NVAR);
+  return (E)c / (n1 / l1 + n2 / l2); // TODO: obtain max(u), which we
+                                     //       assume ~ 1 now, from the
+                                     //       simulation.
 }
