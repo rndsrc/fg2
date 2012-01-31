@@ -16,7 +16,6 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cuda_runtime.h>
 #include "fg2.h"
 
 static void shuffle(R *x, R *y, const Z off, const Z h, const Z n)
@@ -56,10 +55,36 @@ static void Neumann1(R *x)
                x - (i + 1) * s, width, cudaMemcpyDeviceToDevice);
 }
 
-void bcond(R *x, const int p1)
+static __global__ void customize(R *x, const Z n, const Z s)
+{
+  x += blockIdx.x * s; // pick row
+
+  Z d = blockIdx.y ? n - (1 + threadIdx.y) :   (    threadIdx.y);
+  Z g = blockIdx.y ? n + (    threadIdx.y) : - (1 + threadIdx.y);
+
+  R X = x[d * NVAR + threadIdx.x];
+  switch(threadIdx.x) {
+  case 0:         break;
+  case 1:         break;
+  case 2: X = -X; break; // v2 = 0 at boundary
+  case 3:         break;
+  }
+  x[g * NVAR + threadIdx.x] = X;
+}
+
+static void reflect2(R *x)
+{
+  using namespace global;
+  const dim3 Gsz(n1 + ORDER, 2);
+  const dim3 Bsz(NVAR, HALF);
+  customize<<<Gsz, Bsz>>>(x - HALF * s, n2, s);
+}
+
+void bcond(R *x, const int p1, const int p2)
 {
   if(p1) periodic1(x);
   else   Neumann1 (x);
 
-  periodic2(x);
+  if(p2) periodic2(x);
+  else   reflect2 (x);
 }
