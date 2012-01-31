@@ -20,7 +20,7 @@
 #include "fg2.h"
 
 namespace global {
-  Z n1, n2, s;
+  Z n1, n2, p1 = 1, p2 = 1, s;
   R l1, l2, c = 0.5;
   R *u, *v, *host = NULL;
   Z g1, g2, b1, b2, sz;

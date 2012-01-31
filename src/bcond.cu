@@ -82,6 +82,8 @@ static void reflect2(R *x)
 
 void bcond(R *x, const int p1, const int p2)
 {
+  // TODO: make the boundary conditions more flexible
+
   if(p1) periodic1(x);
   else   Neumann1 (x);
 
