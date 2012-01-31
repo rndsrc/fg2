@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-static void periodic(R *x, R *y, const Z off, const Z h, const Z n)
+static void shuffle(R *x, R *y, const Z off, const Z h, const Z n)
 {
   using namespace global;
   const Z pitch = s * sizeof(R);
@@ -28,10 +28,22 @@ static void periodic(R *x, R *y, const Z off, const Z h, const Z n)
   cudaMemcpy2D(y + off, pitch, y, pitch, width, h, cudaMemcpyDeviceToDevice);
 }
 
-void bcond(R *x)
+static void periodic1(R *x)
 {
   using namespace global;
   x -= HALF * (s + NVAR);
-  periodic(x, x + HALF * s,    n1 * s,    HALF, (n2 + ORDER) * NVAR);
-  periodic(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * NVAR);
+  shuffle(x, x + HALF * s, n1 * s, HALF, (n2 + ORDER) * NVAR);
+}
+
+static void periodic2(R *x)
+{
+  using namespace global;
+  x -= HALF * (s + NVAR);
+  shuffle(x, x + HALF * NVAR, n2 * NVAR, (n1 + ORDER), HALF * NVAR);
+}
+
+void bcond(R *x)
+{
+  periodic1(x);
+  periodic2(x);
 }
