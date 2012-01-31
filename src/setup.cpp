@@ -21,13 +21,6 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-namespace global {
-  Z n1, n2, s;
-  R l1, l2, *u, *v, *host = NULL;
-  Z g1, g2, b1, b2, sz;
-  double flops, bps;
-}
-
 static void done(void)
 {
   if(global::host)
@@ -36,14 +29,15 @@ static void done(void)
   cudaFree(global::u - HALF * (global::s + NVAR));
 }
 
-Z setup(const Z n1, const Z n2, const R l1, const R l2)
+Z setup(const R c, const R l1, const R l2, const Z n1, const Z n2)
 {
   if(atexit(done)) abort();
 
-  global::n1 = n1;
-  global::n2 = n2;
+  global::c  = c;
   global::l1 = l1;
   global::l2 = l2;
+  global::n1 = n1;
+  global::n2 = n2;
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
 

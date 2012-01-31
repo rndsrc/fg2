@@ -17,26 +17,13 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdlib>
-#include <cstdio>
 #include "fg2.h"
 
-void usage(const char *bad)
+E getdt(void)
 {
-  if(bad)
-    fprintf(stderr, "hydro: illegal option \"%s\"\n\
-Try `hydro --help` for more information.\n", bad);
-  else
-    print("Usage: hydro [OPTION...] [INPUT_FILE]\n\
-2D finite grid code written in CUDA C\n\
-\n\
-      --help        display this help and exit\n\
-  -c                Courant number\n\
-  -d                specify device id\n\
-  -l                total time, box size\n\
-  -n                number of frames and grids\n\
-  parameter=val     set parameters in a particular scheme\n\
-\n\
-Report bugs to <ckch@nordita.org>.\n");
+  using namespace global;
 
-  exit(bad ? -1 : 0);
+  return (E)c / (n1 / l1 + n2 / l2); // TODO: obtain max(u), which we
+                                     //       assume ~ 1 now, from the
+                                     //       simulation.
 }

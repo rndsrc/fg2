@@ -17,26 +17,12 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <cstdlib>
-#include <cstdio>
 #include "fg2.h"
 
-void usage(const char *bad)
-{
-  if(bad)
-    fprintf(stderr, "hydro: illegal option \"%s\"\n\
-Try `hydro --help` for more information.\n", bad);
-  else
-    print("Usage: hydro [OPTION...] [INPUT_FILE]\n\
-2D finite grid code written in CUDA C\n\
-\n\
-      --help        display this help and exit\n\
-  -c                Courant number\n\
-  -d                specify device id\n\
-  -l                total time, box size\n\
-  -n                number of frames and grids\n\
-  parameter=val     set parameters in a particular scheme\n\
-\n\
-Report bugs to <ckch@nordita.org>.\n");
-
-  exit(bad ? -1 : 0);
+namespace global {
+  Z n1, n2, s;
+  R l1, l2, c = 0.5;
+  R *u, *v, *host = NULL;
+  Z g1, g2, b1, b2, sz;
+  double flops, bps;
 }

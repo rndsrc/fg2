@@ -35,7 +35,7 @@ int solve(E t, const E T, Z i, const Z n)
     print("%4d:%7.2f ->%7.2f             ", i, (double)t, (double)target);
     cudaEventRecord(c0, 0);
     while(t < target) {
-      const E dt = std::min(target - t, (E)(0.5 / 1024)); // TODO: dynamical dt
+      const E dt = std::min(target - t, getdt());
 
       print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], (double)dt);
       if(int err = step(t, dt)) {
