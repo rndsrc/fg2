@@ -33,9 +33,6 @@
 #define HALF ((ORDER) / 2)
 #endif
 
-#define STR1NG1ZE(x) #x
-#define STRINGIZE(x) STR1NG1ZE(x)
-
 typedef int Z;
 #if defined(DOUBLE) || defined(OUBLE) // so -DOUBLE works
 typedef double      R;
@@ -78,8 +75,12 @@ void bcond(R *);
 void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 
-struct state {
-  R ld, u1, u2, le; // ln(density), velocity, and ln(thermal energy)
-};
+#ifdef KICK_CU
+#include "deriv.h"
+#endif
+
+#define  STR1NG1ZE(x) #x
+#define  STRINGIZE(x) STR1NG1ZE(x)
+#include STRINGIZE(EQNS)
 
 #endif // FG2_H

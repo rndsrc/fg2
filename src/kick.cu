@@ -16,9 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#define KICK_CU
 #include "fg2.h"
-#include "deriv.h"
-#include STRINGIZE(EQNS)
 
 static __device__ void copy(R *dst, const R *src, const Z n)
 {
