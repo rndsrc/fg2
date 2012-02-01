@@ -58,12 +58,14 @@ namespace global {
 void print(const char *, ...);
 void error(const char *, ...);
 void usage(const char *);
-int  exist(const char *);
 void banner(const char *, char, char);
+int  exist(const char *);
+Z    frame(const char *);
+const char *name(Z);
 
 void init(const char *);
-Z    load(const char *);
-void dump(Z, const char *);
+E    load(const char *);
+void dump(const char *, E);
 
 const char *para(const char *);
 Z   setup(R, R, R, Z, Z);

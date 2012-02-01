@@ -24,8 +24,14 @@ pro vis, i, all=all, png=png
   openr, lun, string(i, format='(i04)') + '.raw', /get_lun
   size = lonarr(4)
   readu, lun, size
-  if size[3] eq 8 then data = dblarr(size[2], size[1], size[0]) $
-  else                 data = fltarr(size[2], size[1], size[0])
+  if size[3] eq 8 then begin
+    time = dcomplex(0.0, 0.0) ; sizeof(long double) = 16 on my machines
+    data = dblarr(size[2], size[1], size[0])
+  endif else begin
+    time = double(0.0)
+    data = fltarr(size[2], size[1], size[0])
+  endelse
+  readu, lun, time
   readu, lun, data
   close, lun & free_lun, lun
 
@@ -33,6 +39,8 @@ pro vis, i, all=all, png=png
   y = (dindgen(size[1]) + 0.5) / size[1] - 0.5
   data[0,*,*] = exp(data[0,*,*])
   data[3,*,*] = exp(data[3,*,*])
+
+  print, time
 
   if png then begin
     dsaved = !d.name

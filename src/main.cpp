@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 {
   const char *input = "default";
 
-  Z n0 = 10,   n1 = 1024, n2 = 1024, d = 0, i;
-  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0,  c = 0.5;
+  Z n0 = 10,   n1 = 1024, n2 = 1024, d = 0,   i;
+  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0,  c = 0.5, t;
 
   // If "--help" is an argument, print usage and exit
   for(i = 1; i < argc; ++i)
@@ -97,15 +97,17 @@ int main(int argc, char **argv)
 
   // Setup initial condition or load starting frame from input
   if(exist(input)) {
-    print("  Input file   : \"%s\"\n", input);
-    i = load(input);
+    print("  Input file   : \"%s\"...", input);
+    i = frame(input);
+    t = load (input);
+    print("\b\b\b, start at frame %d, time %g\n", i, t);
   } else {
     print("  Initialize   : \"%s\"\n", input);
     init(input);
-    dump(i = 0, "raw");
+    dump(name(i = 0), t = 0.0);
   }
 
   // Really solve the problem
   print("  Time         : %g with %d frame%s\n", l0, n0, n0 > 1 ? "s" : "");
-  return solve(i * (l0 / n0), l0, i, n0);
+  return solve(t, t + l0, i, i + n0);
 }
