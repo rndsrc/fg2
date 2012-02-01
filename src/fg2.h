@@ -62,8 +62,8 @@ int  exist(const char *);
 void banner(const char *, char, char);
 
 void init(const char *);
-Z    load(const char *);
-void dump(Z, const char *);
+Z    load(const char *, R *);
+void dump(Z, R, const char *);
 
 const char *para(const char *);
 Z   setup(R, R, R, Z, Z);
