@@ -46,6 +46,8 @@ int main(int argc, char **argv)
     else if(argv[i][0] != '-') input = argv[i];
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
+      PARA('b') global::p1 = atop(argv[++i]); BREAK;
+                global::p2 = atop(argv[++i]); break;
       PARA('c') global::c  = atof(argv[++i]); break;
       PARA('d')         d  = atoi(argv[++i]); break;
       PARA('l')         l0 = atof(argv[++i]); BREAK;

@@ -21,6 +21,11 @@
 #include <cstring>
 #include "fg2.h"
 
+int atop(const char *s)
+{
+  return s[0] == 'p' || s[0] == 'P';
+}
+
 void banner(const char *title, const char l, const char r)
 {
   const Z n = strlen(title);
