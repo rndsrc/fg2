@@ -29,17 +29,12 @@ static void done(void)
   cudaFree(global::u - HALF * (global::s + NVAR));
 }
 
-Z setup(const R c, const R l1, const R l2, const Z n1, const Z n2)
+Z setup(const Z n1, const Z n2)
 {
   if(atexit(done)) abort();
 
-  global::c  = c;
-  global::l1 = l1;
-  global::l2 = l2;
-  global::n1 = n1;
-  global::n2 = n2;
-  const Z m1 = n1 + ORDER;
-  const Z m2 = n2 + ORDER;
+  const Z m1 = (global::n1 = n1) + ORDER;
+  const Z m2 = (global::n2 = n2) + ORDER;
 
   // Grid and block sizes for rolling cache kernel
   Z d; cudaGetDevice(&d);
@@ -83,17 +78,6 @@ Z setup(const R c, const R l1, const R l2, const Z n1, const Z n2)
   for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
   cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
-
-  // Compute floating point operation and bandwidth per step
-  global::flops = 3 * ((n1 * n2) * (287 + NVAR * 2.0)); // assume FMA
-  global::bps   = 3 * ((m1 * m2) * 1.0 +
-                       (n1 * n2) * 5.0 +
-                       (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
-
-  // Set device constant for kernels
-  const R Delta[] = {l1 / n1, l2 / n2};
-  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
-  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 
   // Return size of device memory
   return 2 * sizeof(R) * n;

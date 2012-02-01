@@ -16,8 +16,10 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#define MAIN_CPP
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <cuda_runtime.h>
 #include "fg2.h"
 
@@ -29,8 +31,8 @@ int main(int argc, char **argv)
 {
   const char *input = "default";
 
-  Z n0 = 10,   n1 = 1024, n2 = 1024, d = 0, i;
-  R l0 = 1.0,  l1 = 1.0,  l2 = 1.0,  c = 0.5;
+  Z i, n0 = 10, n1 = 1024, n2 = 1024, d = 0;
+  R t, l0 = 1.0;
 
   // If "--help" is an argument, print usage and exit
   for(i = 1; i < argc; ++i)
@@ -38,23 +40,27 @@ int main(int argc, char **argv)
 
   // Home made argument parser
   for(i = 1; i < argc; ++i) {
-    // Check parameter
+    // Check for parameters, we can only set them after picking device
     if(strchr(argv[i], '='));
     // Arguments do not start with '-' are input files
     else if(argv[i][0] != '-') input = argv[i];
     // Arguments start with '-' are options
     else switch(argv[i][1]) {
-      PARA('c') c  = atof(argv[++i]); break;
-      PARA('d') d  = atoi(argv[++i]); break;
-      PARA('l') l0 = atof(argv[++i]); BREAK;
-           l2 = l1 = atof(argv[++i]); BREAK;
-                l2 = atof(argv[++i]); break;
-      PARA('n') n0 = atoi(argv[++i]); BREAK;
-           n2 = n1 = atoi(argv[++i]); BREAK;
-                n2 = atoi(argv[++i]); break;
+      PARA('b') global::p1 = atop(argv[++i]); BREAK;
+                global::p2 = atop(argv[++i]); break;
+      PARA('c') global::c  = atof(argv[++i]); break;
+      PARA('d')         d  = atoi(argv[++i]); break;
+      PARA('l')         l0 = atof(argv[++i]); BREAK;
+   global::l2 = global::l1 = atof(argv[++i]); BREAK;
+                global::l2 = atof(argv[++i]); break;
+      PARA('n')         n0 = atoi(argv[++i]); BREAK;
+                   n2 = n1 = atoi(argv[++i]); BREAK;
+                        n2 = atoi(argv[++i]); break;
       default : ignore : usage(argv[i]);
     }
   }
+
+  // TODO: print version and compile options
   print("2D finite grid code written in CUDA C\n\n");
 
   // Pick a device, obtain global and shared memory size
@@ -75,7 +81,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(Z sz = setup(c, l1, l2, n1, n2))
+  if(Z sz = setup(n1, n2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else
@@ -97,15 +103,19 @@ int main(int argc, char **argv)
 
   // Setup initial condition or load starting frame from input
   if(exist(input)) {
-    print("  Input file   : \"%s\"\n", input);
-    i = load(input);
+    print("  Input file   : \"%s\"...", input);
+    i = frame(input);
+    t = load (input);
+    config();
+    print("\b\b\b, start at frame %d, time %g\n", i, t);
   } else {
     print("  Initialize   : \"%s\"\n", input);
+    config();
     init(input);
-    dump(i = 0, "raw");
+    dump(name(i = 0), t = 0.0);
   }
 
   // Really solve the problem
   print("  Time         : %g with %d frame%s\n", l0, n0, n0 > 1 ? "s" : "");
-  return solve(i * (l0 / n0), l0, i, n0);
+  return solve(t, t + l0, i, i + n0);
 }

@@ -21,25 +21,22 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-static Z frame(const char *h)
-{
-  char c;
-  while((int)(c = *h++))
-    if('0' <= c && c <= '9')
-      return atoi(h-1); // get the frame number
-  return 0;
-}
-
-Z load(const char *name)
+E load(const char *name)
 {
   FILE *file = fopen(name, "rb"); // assume checked with exist()
 
   using namespace global;
 
-  Z size[4];
-  fread(size, sizeof(Z), 4, file);
+  Z size[6];
+  fread(size, sizeof(Z), 6, file);
   if(size[0] != n1 || size[1] != n2 || size[2] != NVAR || size[3] != sizeof(R))
-    error("input data is not compatible with the setup");
+    error("input data is not compatible with the setup\n");
+
+  E time;
+  fread(&time, sizeof(E), 1, file);
+
+  R info[3];
+  fread(info, sizeof(R), 3, file);
 
   const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
   const Z dpitch = s         * sizeof(R);
@@ -48,19 +45,27 @@ Z load(const char *name)
 
   fclose(file);
 
-  return frame(name);
+  p1 = size[4];
+  p2 = size[5];
+  l1 = info[0];
+  l2 = info[1];
+  c  = info[2];
+  return time;
 }
 
-void dump(const Z i, const char *ext)
+void dump(const char *name, const E time)
 {
-  char name[64];
-  snprintf(name, sizeof(name), "%04d.%s", i, ext);
   FILE *file = fopen(name, "wb");
 
   using namespace global;
 
-  const Z size[] = {n1, n2, NVAR, sizeof(R)};
-  fwrite(size, sizeof(Z), 4, file);
+  const Z size[] = {n1, n2, NVAR, sizeof(R), p1, p2};
+  fwrite(size, sizeof(Z), 6, file);
+
+  fwrite(&time, sizeof(E), 1, file);
+
+  const R info[] = {l1, l2, c};
+  fwrite(info, sizeof(R), 3, file);
 
   const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
   const Z dpitch = s         * sizeof(R);

@@ -16,9 +16,15 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include "fg2.h"
+
+int atop(const char *s)
+{
+  return s[0] == 'p' || s[0] == 'P';
+}
 
 void banner(const char *title, const char l, const char r)
 {
@@ -37,4 +43,20 @@ int exist(const char *name)
   if(!file) return 0;
   fclose(file);
   return 1;
+}
+
+Z frame(const char *name)
+{
+  char c;
+  while((int)(c = *name++))
+    if('0' <= c && c <= '9')
+      return atoi(name - 1); // get the frame number
+  return 0;
+}
+
+const char *name(Z i)
+{
+  static char name[64];
+  snprintf(name, sizeof(name), "%04d.%s", i, "raw");
+  return name;
 }

@@ -22,15 +22,26 @@ pro vis, i, all=all, png=png
   if not keyword_set(png) then png = 0
 
   openr, lun, string(i, format='(i04)') + '.raw', /get_lun
-  size = lonarr(4)
+  size = lonarr(6)
   readu, lun, size
-  if size[3] eq 8 then data = dblarr(size[2], size[1], size[0]) $
-  else                 data = fltarr(size[2], size[1], size[0])
+  if size[3] eq 8 then begin
+    time = dcomplex(0.0, 0.0) ; sizeof(long double) = 16 on my machines
+    info = dblarr(3)
+    data = dblarr(size[2], size[1], size[0])
+  endif else begin
+    time = double(0.0)
+    info = fltarr(3)
+    data = fltarr(size[2], size[1], size[0])
+  endelse
+  readu, lun, time
+  readu, lun, info
   readu, lun, data
   close, lun & free_lun, lun
 
-  x = (dindgen(size[0]) + 0.5) / size[0] - 0.5
-  y = (dindgen(size[1]) + 0.5) / size[1] - 0.5
+  print, 'Time = ', strtrim(string(time), 1)
+
+  x = info[0] * (dindgen(size[0]) + 0.5) / size[0]
+  y = info[1] * (dindgen(size[1]) + 0.5) / size[1]
   data[0,*,*] = exp(data[0,*,*])
   data[3,*,*] = exp(data[3,*,*])
 

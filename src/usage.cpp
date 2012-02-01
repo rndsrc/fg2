@@ -30,6 +30,7 @@ Try `hydro --help` for more information.\n", bad);
 2D finite grid code written in CUDA C\n\
 \n\
       --help        display this help and exit\n\
+  -b                periodic boundary conditions\n\
   -c                Courant number\n\
   -d                specify device id\n\
   -l                total time, box size\n\
