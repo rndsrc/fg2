@@ -101,6 +101,27 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   return dt;
 }
 
+#elif defined(MAIN_CPP) //////////////////////////////////////////////////////
+
+static void config(void)
+{
+  using namespace global;
+
+  const Z m1 = n1 + ORDER;
+  const Z m2 = n2 + ORDER;
+
+  // Compute floating point operation and bandwidth per step
+  flops = 3 * ((n1 * n2) * (287 + NVAR * 2.0)); // assume FMA
+  bps   = 3 * ((m1 * m2) * 1.0 +
+               (n1 * n2) * 5.0 +
+               (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
+
+  // Set device constant for kernels
+  const R Delta[] = {l1 / n1, l2 / n2};
+  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
+  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
+}
+
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////
 
 static R poly_gamma;

@@ -48,10 +48,12 @@ typedef struct state S;
 #define NVAR (sizeof(S) / sizeof(R))
 
 namespace global {
-  extern Z n1, n2, p1, p2, s;  // resolution, periodic, stride in R
-  extern R l1, l2, c;          // box size, Courant number
-  extern R *u, *v, *host;      // state, swap, and host array
+  extern Z n1, n2, s;          // resolution, stride in R
   extern Z g1, g2, b1, b2, sz; // grid and block dim, shared memory in byte
+  extern R *u, *v, *host;      // state, swap, and host array
+
+  extern R l1, l2, c;          // box size, Courant number
+  extern int p1, p2;           // periodic boundary conditions
   extern double flops, bps;    // float operation and bit per *step*
 }
 
@@ -68,7 +70,7 @@ E    load(const char *);
 void dump(const char *, E);
 
 const char *para(const char *);
-Z   setup(R, R, R, Z, Z);
+Z   setup(Z, Z);
 int solve(E, E, Z, Z);
 E   getdt(void);
 int step (E, E);

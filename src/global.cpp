@@ -20,9 +20,12 @@
 #include "fg2.h"
 
 namespace global {
-  Z n1, n2, p1 = 1, p2 = 1, s;
-  R l1, l2, c = 0.5;
-  R *u, *v, *host = NULL;
+  // Values needed in setup()
+  Z n1, n2, s;
   Z g1, g2, b1, b2, sz;
-  double flops, bps;
+  R *u, *v, *host = NULL;
+  // Values needed in config()
+  R l1 = 1.0, l2 = 1.0, c = 0.5;
+  int p1 = 1, p2 = 1;
+  double flops = 0.0, bps = 0.0;
 }
