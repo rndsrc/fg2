@@ -22,15 +22,15 @@
 
 static const char rotor[] = "-/|\\";
 
-int solve(E t, const E T, Z i, const Z n)
+int solve(E t, const E t_final, Z i, const Z n)
 {
   cudaEvent_t c0, c1;
   cudaEventCreate(&c0);
   cudaEventCreate(&c1);
   banner(" Start Simulation ", '=', '=');
 
-  for(const E Dt = (T - t) / (n - i); i++ < n; dump(i, "raw")) {
-    const E target = T - (n - i) * Dt; Z m = 0;
+  for(const E dt_dump = (t_final - t) / (n - i); i++ < n; dump(i, "raw")) {
+    const E target = t_final - (n - i) * dt_dump; Z m = 0;
 
     print("%4d:%7.2f ->%7.2f             ", i, (double)t, (double)target);
     cudaEventRecord(c0, 0);
