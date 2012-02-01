@@ -27,8 +27,8 @@ E load(const char *name)
 
   using namespace global;
 
-  Z size[4];
-  fread(size, sizeof(Z), 4, file);
+  Z size[6];
+  fread(size, sizeof(Z), 6, file);
   if(size[0] != n1 || size[1] != n2 || size[2] != NVAR || size[3] != sizeof(R))
     error("input data is not compatible with the setup\n");
 
@@ -45,6 +45,8 @@ E load(const char *name)
 
   fclose(file);
 
+  p1 = size[4];
+  p2 = size[5];
   l1 = info[0];
   l2 = info[1];
   c  = info[2];
@@ -57,8 +59,8 @@ void dump(const char *name, const E time)
 
   using namespace global;
 
-  const Z size[] = {n1, n2, NVAR, sizeof(R)};
-  fwrite(size, sizeof(Z), 4, file);
+  const Z size[] = {n1, n2, NVAR, sizeof(R), p1, p2};
+  fwrite(size, sizeof(Z), 6, file);
 
   fwrite(&time, sizeof(E), 1, file);
 

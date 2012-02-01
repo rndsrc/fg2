@@ -22,7 +22,7 @@ pro vis, i, all=all, png=png
   if not keyword_set(png) then png = 0
 
   openr, lun, string(i, format='(i04)') + '.raw', /get_lun
-  size = lonarr(4)
+  size = lonarr(6)
   readu, lun, size
   if size[3] eq 8 then begin
     time = dcomplex(0.0, 0.0) ; sizeof(long double) = 16 on my machines
