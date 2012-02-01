@@ -30,10 +30,13 @@ E load(const char *name)
   Z size[4];
   fread(size, sizeof(Z), 4, file);
   if(size[0] != n1 || size[1] != n2 || size[2] != NVAR || size[3] != sizeof(R))
-    error("input data is not compatible with the setup");
+    error("input data is not compatible with the setup\n");
 
   E time;
   fread(&time, sizeof(E), 1, file);
+
+  R info[3];
+  fread(info, sizeof(R), 3, file);
 
   const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
   const Z dpitch = s         * sizeof(R);
@@ -42,6 +45,9 @@ E load(const char *name)
 
   fclose(file);
 
+  l1 = info[0];
+  l2 = info[1];
+  c  = info[2];
   return time;
 }
 
@@ -55,6 +61,9 @@ void dump(const char *name, const E time)
   fwrite(size, sizeof(Z), 4, file);
 
   fwrite(&time, sizeof(E), 1, file);
+
+  const R info[] = {l1, l2, c};
+  fwrite(info, sizeof(R), 3, file);
 
   const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
   const Z dpitch = s         * sizeof(R);
