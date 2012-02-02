@@ -20,7 +20,7 @@
 
 struct state {
   R ld;      // ln(density)
-  R a, v, l; // specific accretion rate, u_theta, specific angular momentum
+  R a, v, l; // specific accretion rate, u_theta.z, specific angular momentum
 };
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
@@ -37,15 +37,15 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   const R r2    = r * r;                                // 1 FLOP
   const R theta =               (j + K(0.5)) * Delta2 ; // 2 FLOP
   const R sin_t = sin(theta);                           // 1 FLOP
-  const R cot_t = cos(theta) / sin_t;                   // 2 FLOP
+  const R cos_t = cos(theta);                           // 1 FLOP
 
   const R ur    = u->a / r2;          // 1 FLOP
-  const R utheta= u->v;
+  const R utheta= u->v / sin_t;       // 1 FLOP
   const R uphi  = u->l / (r * sin_t); // 2 FLOP
 
-  const S d1    = {D1(ld), D1(a), D1(v), D1(l)};           // 36 FLOP
-  const S d2    = {D2(ld), D2(a), D2(v), D2(l)};           // 36 FLOP
-  const R div_u = (d1.a / r2 + d2.v + utheta * cot_t) / r; //  5 FLOP
+  const S d1    = {D1(ld), D1(a), D1(v), D1(l)};  // 36 FLOP
+  const S d2    = {D2(ld), D2(a), D2(v), D2(l)};  // 36 FLOP
+  const R div_u = (d1.a / r2 + d2.v / sin_t) / r; //  4 FLOP
 
   // Advection: 20 FLOP
   {
@@ -55,18 +55,18 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.l  -= (ur * d1.l  + utheta * d2.l ) / r;
   }
 
-  // Compressible/pressure effects: 7 FLOP
+  // Compressible/pressure effects: 8 FLOP
   {
     dt.ld -= div_u;
     dt.a  -= d1.ld * r * para_cs2;
-    dt.v  -= d2.ld / r * para_cs2;
+    dt.v  -= d2.ld / r * para_cs2 * sin_t;
   }
 
-  // Pseudo force (coordinate effect): 13 FLOP
+  // Pseudo force (coordinate effect): 14 FLOP
   {
-    const R uphi2 = uphi * uphi;
-    dt.a += (K(2.0) * ur * ur + uphi2 + utheta * utheta) * r;
-    dt.v += (           cot_t * uphi2 -     ur * utheta) / r;
+    const R up2 = utheta * utheta + uphi * uphi;
+    dt.a += (        up2 + K(2.0) * ur * ur    ) * r;
+    dt.v += (cos_t * up2 -  sin_t * ur * utheta) / r;
   }
 
   // External force (gravity): 5 FLOP
@@ -97,7 +97,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (135 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (136 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
