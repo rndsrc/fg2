@@ -27,6 +27,7 @@ struct state {
 
 __device__ __constant__ R para_M   = 1.0;
 __device__ __constant__ R para_rS  = 2.0;
+__device__ __constant__ R para_cs2 = 0.1;
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
@@ -54,9 +55,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.l  -= (ur * d1.l  + utheta * d2.l ) / r;
   }
 
-  // Compressible/pressure effects: 1 FLOP
+  // Compressible/pressure effects: 7 FLOP
   {
     dt.ld -= div_u;
+    dt.a  -= d1.ld * r * para_cs2;
+    dt.v  -= d2.ld / r * para_cs2;
   }
 
   // Pseudo force (coordinate effect): 13 FLOP
@@ -94,7 +97,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (129 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (135 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
