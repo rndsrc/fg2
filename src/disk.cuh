@@ -25,6 +25,9 @@ struct state {
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
 
+__device__ __constant__ R para_M   = 1.0;
+__device__ __constant__ R para_rS  = 2.0;
+
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dt = {0.0, 0.0, 0.0, 0.0};
@@ -59,6 +62,12 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R uphi2 = uphi * uphi;
     dt.ur += (uphi2         + ut * ut) / r;
     dt.ut += (uphi2 * cot_t - ur * ut) / r;
+  }
+
+  // External force (gravity)
+  {
+    const R r_rS = r - para_rS;
+    dt.ur -= para_M / (r_rS * r_rS);
   }
 
   return dt;
@@ -96,13 +105,21 @@ static void config(void)
 
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////
 
-static S ad_hoc(R r, R theta)
+static R M;
+
+static S ad_hoc(R lnr, R theta)
 {
-  return (S){0.0, 0.0, 0.0, 0.0};
+  const R r     = PARA_R0 * exp(lnr);
+  const R sin_t = sin(theta);
+  const R l     = sqrt(M * r * sin_t * sin_t * sin_t);
+
+  return (S){0.0, 0.0, 0.0, l};
 }
 
 static S (*pick(const char *name))(R, R)
 {
+  cudaMemcpyFromSymbol(&M, "para_M", sizeof(R));
+
   return ad_hoc; // default
 }
 
