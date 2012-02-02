@@ -107,10 +107,9 @@ static void config(void)
 {
   using namespace global;
 
+  // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-
-  // Compute floating point operation and bandwidth per step
   flops = 3 * ((n1 * n2) * (287 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
