@@ -116,6 +116,8 @@ static void config(void)
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////
 
 static R M;
+static R rS;
+static R Gamma;
 
 static S ad_hoc(R lnr, R theta)
 {
@@ -126,9 +128,100 @@ static S ad_hoc(R lnr, R theta)
   return (S){0.0, 0.0, 0.0, l, 0.0};
 }
 
+static S Hawley(R lnr, R theta)
+{
+  const R r = PARA_R0 * exp(lnr);
+  const R p = r * sin(theta);
+
+  // We use something very similar to the steady state torus solution
+  // given by Hawley (2000) as our initial condition.  The density is
+  // given implicitly by equation (7) in the paper:
+  //
+  //   Gamma K P / (Gamma - 1) rho = C - Psi - lK^2 / (2q - 2) R^(2q - 2)
+  //
+  // By comparing the dimensions of different terms on the right hand
+  // side, it is clear that R must be dimensionless.  Indeed, Hawley
+  // choice the Schwarzschild radius rS = 1.  This automatically gives
+  // Psi ~ c^2.
+  //
+  // Using P = K rho^Gamma, the "pressure acceleration" from the left
+  // hand side is
+  //
+  //   grad(LHS) / rho = Gamma K^2 rho^(Gamma - 2) grad(rho)
+  //
+  // Comparing this term with grad(P) / rho, it seems the extra
+  // polytropic constant "K" is a typo.  We will drop it when we
+  // construct our initial condition.
+  //
+  // The integration constant C controls the size of the torus.  In
+  // the Hawley (2000) paper, it is solved by fixing the inner edge of
+  // the torus.  Nevertheless, this constant physically controls the
+  // temperature, which gives raise to the scale height etc.  To see
+  // this, the centrifugal support *almost* cancels gravity at the
+  // pressure maximum so we left with
+  //
+  //   Gamma P / (Gamma - 1) rho = Gamma kB T / (Gamma - 1) mu mH ~ C
+  //
+  // The contant C determines the temperature at the pressure maximum,
+  // and vice versa.  In this file, we will use the temperature, or
+  // specific thermal energy, at the pressure maximum, tmp0, (and
+  // other parameters) to choose C.
+
+  // Setup parameters
+  const R q0 =  2.0;
+  const R r0 = 16.0;
+  const R d0 =  1.0;
+  const R e0 =  0.01;
+  const R d1 =  0.01;
+  const R e1 =  0.01;
+
+  // Shorthands
+  const R g1 = Gamma - 1.0;
+  const R q1 = 2.0 * q0 - 2.0;
+
+  // "Specific angular momentum" at pressure maximum: taking the
+  // derivative of the right hand side of equation (7) in Hawley
+  // (2000), we know the following holds at the pressure maximum
+  //
+  //   G M / (r - rS)^2 = lK^2 / r^(2 q - 1)
+  //
+  // Therefore, the following formula is exact and it fixes the unit
+  // problem
+
+  const R lK = sqrt(M * pow(r0, q1) * r0) / (r0 - rS);
+
+  // We drop the extra polytropic constant in the left hand side.  We
+  // also use specific thermal energy to specify the polytropic and
+  // integration constant
+
+  const R K    = (g1 * e0) / pow(d0, g1);
+  const R c0   = Gamma * e0 - M / (r0 - rS) + lK * lK / (pow(r0, q1) * q1);
+        R prof =         c0 + M / (r  - rS) - lK * lK / (pow(p,  q1) * q1);
+
+  if(prof > 0.0) prof =  pow( prof * g1 / (Gamma * K), 1.0 / g1);
+  else           prof = -pow(-prof * g1 / (Gamma * K), 1.0 / g1);
+
+  R d, l, e;
+  if(prof > d0 * d1) {
+    d = prof;
+    l = lK * pow(p, 2.0 - q0);
+    e = K * pow(d, g1) / g1;
+  } else {
+    d = d0 * d1;
+    l = 0.0;
+    e = K * pow(d, g1) / g1 * e1;
+  }
+
+  return (S){log(d), 0.0, 0.0, l, log(e)};
+}
+
 static S (*pick(const char *name))(R, R)
 {
-  cudaMemcpyFromSymbol(&M, "para_M", sizeof(R));
+  cudaMemcpyFromSymbol(&M,     "para_M",     sizeof(R));
+  cudaMemcpyFromSymbol(&rS,    "para_rS",    sizeof(R));
+  cudaMemcpyFromSymbol(&Gamma, "para_gamma", sizeof(R));
+
+  if(!strcmp(name, "Hawley")) return Hawley; // hydrostatic Hawley (2000) torus
 
   return ad_hoc; // default
 }
