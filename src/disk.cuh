@@ -29,9 +29,12 @@ struct state {
 __device__ __constant__ R para_M     = 1.0;       // mass of central black hole
 __device__ __constant__ R para_rS    = 2.0;       // Schwarzschild radius
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
+
 __device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
-__device__ __constant__ R para_nu    = 0.0;       // simple viscosity
-__device__ __constant__ R para_kappa = 0.0;       // simple conductivity
+__device__ __constant__ R para_ad    = 0.0;       // simple viscosity
+__device__ __constant__ R para_vd    = 0.0;       // simple viscosity
+__device__ __constant__ R para_ld    = 0.0;       // simple viscosity
+__device__ __constant__ R para_ed    = 0.0;       // simple conductivity
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
@@ -83,15 +86,14 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.a -= r2 * para_M / (r_rS * r_rS);
   }
 
-  // Simple density diffusion: 135 FLOP
+  // Simple diffusion --- take care log but no geometric factors: 143 FLOP
   {
-    dt.ld += para_dd    * (D11(ld) + D22(ld));
-    dt.a  += para_nu    * (D11(a ) + D22(a ));
-    dt.v  += para_nu    * (D11(v ) + D22(v ));
-    dt.l  += para_nu    * (D11(l ) + D22(l ));
-    dt.le += para_kappa * (D11(le) + D22(le));
+    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld + d2.ld);
+    dt.a  += para_ad * (D11(a ) + D22(a )                                );
+    dt.v  += para_vd * (D11(v ) + D22(v )                                );
+    dt.l  += para_ld * (D11(l ) + D22(l )                                );
+    dt.le += para_ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le + d2.le);
   }
-
 
   return dt;
 }
@@ -115,7 +117,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (301 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (309 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
