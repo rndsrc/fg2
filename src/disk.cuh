@@ -188,15 +188,15 @@ static S Hawley(R lnr, R theta)
   // Therefore, the following formula is exact and it fixes the unit
   // problem
 
-  const R lK = sqrt(M * pow(r0, q1) * r0) / (r0 - rS);
+  const R lK = sqrt(M * pow(r0, q1) * r0) / r0;
 
   // We drop the extra polytropic constant in the left hand side.  We
   // also use specific thermal energy to specify the polytropic and
   // integration constant
 
   const R K    = (g1 * e0) / pow(d0, g1);
-  const R c0   = Gamma * e0 - M / (r0 - rS) + lK * lK / (pow(r0, q1) * q1);
-        R prof =         c0 + M / (r  - rS) - lK * lK / (pow(p,  q1) * q1);
+  const R c0   = Gamma * e0 - M / r0 + lK * lK / (pow(r0, q1) * q1);
+        R prof =         c0 + M / r  - lK * lK / (pow(p,  q1) * q1);
 
   if(prof > 0.0) prof =  pow( prof * g1 / (Gamma * K), 1.0 / g1);
   else           prof = -pow(-prof * g1 / (Gamma * K), 1.0 / g1);
