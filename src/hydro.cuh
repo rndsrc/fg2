@@ -19,7 +19,7 @@
 struct state {
   R ld;     // ln(density)
   R u1, u2; // velocity
-  R le;     // ln(thermal energy)
+  R le;     // ln(specific_thermal_energy)
 };
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   const S d1      = {D1(ld), D1(u1), D1(u2), D1(le)}; // 36 FLOP
   const S d2      = {D2(ld), D2(u1), D2(u2), D2(le)}; // 36 FLOP
   const R gamma_1 = para_gamma - K(1.0);              // 1 FLOP
-  const R temp    = gamma_1 * exp(u->le);             // 1 FLOP
+  const R temp    = gamma_1 * exp(u->le);             // 2 FLOP
   const R div_u   = d1.u1 + d2.u2;                    // 1 FLOP
 
   // Advection: 16 FLOP
@@ -110,7 +110,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (287 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (288 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
