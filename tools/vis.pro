@@ -44,7 +44,7 @@ pro vis, i, rtheta=rtheta, all=all, png=png
     psaved=!p.multi
     !p.multi=[0,2,2]
     x = data.x
-    y = data.x
+    y = data.y
     shade_surf, data.d[*,*,0], x, y, charsize=2
     shade_surf, data.d[*,*,1], x, y, charsize=2
     shade_surf, data.d[*,*,2], x, y, charsize=2
