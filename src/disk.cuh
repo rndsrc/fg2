@@ -88,11 +88,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Simple diffusion --- take care log but no geometric factors: 143 FLOP
   {
-    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld + d2.ld);
+    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld * d2.ld);
     dt.a  += para_ad * (D11(a ) + D22(a )                                );
     dt.v  += para_vd * (D11(v ) + D22(v )                                );
     dt.l  += para_ld * (D11(l ) + D22(l )                                );
-    dt.le += para_ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le + d2.le);
+    dt.le += para_ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
   }
 
   return dt;
