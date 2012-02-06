@@ -65,8 +65,8 @@ static __global__ void customize(R *x, const Z n, const Z s)
   R X = x[d * NVAR + threadIdx.x];
   switch(threadIdx.x) {
   case 0:         break;
-  case 1:         break;
-  case 2: X = -X; break; // v2 = 0 at boundary
+  case 1: X = -X; break; // v_r = 0 at pole; TODO: set bcond in module
+  case 2:         break;
   case 3:         break;
   }
   x[g * NVAR + threadIdx.x] = X;
