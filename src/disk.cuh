@@ -19,9 +19,9 @@
 #define PARA_R0 K(3.0)
 
 struct state {
-  R ld;      // ln(density)
-  R a, v, l; // specific accretion rate, u_theta.z, specific angular momentum
-  R le;      // ln(specific thermal_energy)
+  R lnd;           // ln(density)
+  R v_r, v_t, Omg; // radial, altitude, and angular velocity
+  R lne;           // ln(specific_thermal_energy)
 };
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
@@ -40,59 +40,60 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dt = {0.0, 0.0, 0.0, 0.0};
 
-  const R r     = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
-  const R r2    = r * r;                                // 1 FLOP
-  const R theta =               (j + K(0.5)) * Delta2 ; // 2 FLOP
-  const R sin_t = sin(theta);                           // 1 FLOP
-  const R cos_t = cos(theta);                           // 1 FLOP
+  const S d1 = {D1(lnd), D1(v_r), D1(v_t), D1(Omg), D1(lne)}; // 45 FLOP
+  const S d2 = {D2(lnd), D2(v_r), D2(v_t), D2(Omg), D2(lne)}; // 45 FLOP
 
-  const R ur     = u->a / r2;          // 1 FLOP
-  const R utheta = u->v / sin_t;       // 1 FLOP
-  const R uphi   = u->l / (r * sin_t); // 2 FLOP
+  const R r = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
+  const R t =               (j + K(0.5)) * Delta2 ; // 2 FLOP
+  R div_v;
 
-  const S d1      = {D1(ld), D1(a), D1(v), D1(l), D1(le)}; // 45 FLOP
-  const S d2      = {D2(ld), D2(a), D2(v), D2(l), D2(le)}; // 45 FLOP
-  const R gamma_1 = para_gamma - K(1.0);                   //  1 FLOP
-  const R temp    = gamma_1 * exp(u->le);                  //  2 FLOP
-  const R div_u   = (d1.a / r2 + d2.v / sin_t) / r;        //  4 FLOP
-
-  // Advection: 25 FLOP
+  // Advection and pseudo force: 52 FLOP
   {
-    dt.ld -= (ur * d1.ld + utheta * d2.ld) / r;
-    dt.a  -= (ur * d1.a  + utheta * d2.a ) / r;
-    dt.v  -= (ur * d1.v  + utheta * d2.v ) / r;
-    dt.l  -= (ur * d1.l  + utheta * d2.l ) / r;
-    dt.le -= (ur * d1.le + utheta * d2.le) / r;
+    const R v_r = u->v_r;
+    const R v_t = u->v_t;
+
+    dt.lnd -= (v_r * d1.lnd + v_t * d2.lnd) / r;
+    dt.v_r -= (v_r * d1.v_r + v_t * d2.v_r) / r;
+    dt.v_t -= (v_r * d1.v_t + v_t * d2.v_t) / r;
+    dt.Omg -= (v_r * d1.Omg + v_t * d2.Omg) / r;
+    dt.lne -= (v_r * d1.lne + v_t * d2.lne) / r;
+
+    const R Omg   = u->Omg;
+    const R up2   = r * r * Omg * Omg;
+    const R cot_t = cos(t) / sin(t);
+
+    dt.v_r +=       (   v_t * v_t + up2        ) / r;
+    dt.v_t -=       (   v_r * v_t - up2 * cot_t) / r;
+    dt.Omg -= Omg * (K(2.0) * v_r + v_t * cot_t) / r;
+
+    div_v = (d1.v_r + d2.v_t + K(2.0) * v_r + cot_t * v_t) / r;
   }
 
-  // Compressible/pressure effects: 12 FLOP
+  // Compressible/pressure effects: 14 FLOP
   {
-    dt.ld -= div_u;
-    dt.a  -= temp * (d1.ld + d1.le) * r;
-    dt.v  -= temp * (d2.ld + d2.le) / r * sin_t;
-    dt.le -= div_u * gamma_1;
+    const R gamma_1 = para_gamma - K(1.0);
+    const R temp    = gamma_1 * exp(u->lne);
+
+    dt.lnd -= div_v;
+    dt.v_r -= temp * (d1.lnd + d1.lne) / r;
+    dt.v_t -= temp * (d2.lnd + d2.lne) / r;
+    dt.lne -= div_v * gamma_1;
   }
 
-  // Pseudo force (coordinate effect): 14 FLOP
+  // External force (gravity): 4 FLOP
   {
-    const R up2 = utheta * utheta + uphi * uphi;
-    dt.a += (        up2 + K(2.0) * ur * ur    ) * r;
-    dt.v += (cos_t * up2 -  sin_t * ur * utheta) / r;
+    const R tmp = r - para_rS;
+
+    dt.v_r -= para_M / (tmp * tmp);
   }
 
-  // External force (gravity): 5 FLOP
+  // Simple diffusion --- take care ln() but no geometric factors: 130 FLOP
   {
-    const R r_rS = r - para_rS;
-    dt.a -= r2 * para_M / (r_rS * r_rS);
-  }
-
-  // Simple diffusion --- take care log but no geometric factors: 143 FLOP
-  {
-    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld * d2.ld);
-    dt.a  += para_ad * (D11(a ) + D22(a )                                );
-    dt.v  += para_vd * (D11(v ) + D22(v )                                );
-    dt.l  += para_ld * (D11(l ) + D22(l )                                );
-    dt.le += para_ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
+    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d1.lnd*d1.lnd + d2.lnd*d2.lnd);
+    dt.v_r += para_ad * (D11(v_r) + D22(v_r));
+    dt.v_t += para_vd * (D11(v_t) + D22(v_t));
+    dt.Omg += para_ld * (D11(Omg) + D22(Omg));
+    dt.lne += para_ed * (D11(lne) + D22(lne) + d1.lne*d1.lne + d2.lne*d2.lne);
   }
 
   return dt;
@@ -117,7 +118,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (309 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (296 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
@@ -136,17 +137,16 @@ static R Gamma;
 
 static S ad_hoc(R lnr, R theta)
 {
-  const R r     = PARA_R0 * exp(lnr);
-  const R sin_t = sin(theta);
-  const R l     = sqrt(M * r * sin_t * sin_t * sin_t);
+  const R r   = PARA_R0 * exp(lnr);
+  const R Omg = sin(theta) * sqrt(M / r) / r;
 
-  return (S){0.0, 0.0, 0.0, l, 0.0};
+  return (S){0.0, 0.0, 0.0, Omg, 0.0};
 }
 
 static S Hawley(R lnr, R theta)
 {
-  const R r = PARA_R0 * exp(lnr);
-  const R p = r * sin(theta);
+  const R r     = PARA_R0 * exp(lnr);
+  const R cyl_r = r * sin(theta);
 
   // We use something very similar to the steady state torus solution
   // given by Hawley (2000) as our initial condition.  The density is
@@ -210,24 +210,24 @@ static S Hawley(R lnr, R theta)
   // integration constant
 
   const R K    = (g1 * e0) / pow(d0, g1);
-  const R c0   = Gamma * e0 - M / r0 + lK * lK / (pow(r0, q1) * q1);
-        R prof =         c0 + M / r  - lK * lK / (pow(p,  q1) * q1);
+  const R c0   = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1);
+        R prof =         c0 + M / r  - lK * lK / (pow(cyl_r, q1) * q1);
 
   if(prof > 0.0) prof =  pow( prof * g1 / (Gamma * K), 1.0 / g1);
   else           prof = -pow(-prof * g1 / (Gamma * K), 1.0 / g1);
 
-  R d, l, e;
+  R den, Omg, eng;
   if(prof > d0 * d1) {
-    d = prof;
-    l = lK * pow(p, 2.0 - q0);
-    e = K * pow(d, g1) / g1;
+    den = prof;
+    Omg = lK * pow(cyl_r, -q0);
+    eng =  K * pow(den, g1) / g1;
   } else {
-    d = d0 * d1;
-    l = 0.0;
-    e = K * pow(d, g1) / g1 * e1;
+    den = d0 * d1;
+    Omg = 0.0;
+    eng = K * pow(den, g1) / g1 * e1;
   }
 
-  return (S){log(d), 0.0, 0.0, l, log(e)};
+  return (S){log(den), 0.0, 0.0, Omg, log(eng)};
 }
 
 static S (*pick(const char *name))(R, R)
