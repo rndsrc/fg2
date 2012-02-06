@@ -39,9 +39,9 @@ __device__ __constant__ R para_ed    = 0.0;       // simple conductivity
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0};
-  R r;
+  R r, d_lnd_2, d_lne_2;
 
-  // Derivatives and gravity: 146
+  // Derivatives and gravity: 152
   {
     const R sph_r = PARA_R0 * exp((i + K(0.5)) * Delta1);
     const R theta =               (j + K(0.5)) * Delta2 ;
@@ -64,6 +64,9 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dz.v_z = (cos_t * d1.v_z - sin_t * d2.v_z) / sph_r;
     dz.Omg = (cos_t * d1.Omg - sin_t * d2.Omg) / sph_r;
     dz.lne = (cos_t * d1.lne - sin_t * d2.lne) / sph_r;
+
+    d_lnd_2 = d1.lnd * d1.lnd + d2.lnd * d2.lnd;
+    d_lne_2 = d1.lne * d1.lne + d2.lne * d2.lne;
 
     const R tmp = sph_r - para_rS;
     const R g_r = para_M / (tmp * tmp);
@@ -97,13 +100,13 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= div_v * gamma_1;
   }
 
-  // Simple diffusion --- no geometric factors: 130 FLOP
+  // Simple diffusion --- take care ln() but no geometric factors: 132 FLOP
   {
-    dt.lnd += para_dd * (D11(lnd) + D22(lnd));
+    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
     dt.v_r += para_ad * (D11(v_r) + D22(v_r));
     dt.v_z += para_vd * (D11(v_z) + D22(v_z));
     dt.Omg += para_ld * (D11(Omg) + D22(Omg));
-    dt.lne += para_ed * (D11(lne) + D22(lne));
+    dt.lne += para_ed * (D11(lne) + D22(lne) + d_lne_2);
   }
 
   return dt;
@@ -128,7 +131,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (318 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (326 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
