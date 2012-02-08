@@ -33,6 +33,7 @@ __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
 __device__ __constant__ R para_nus   = 2.0e-4;    // shear  viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk   viscosity
 __device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
+__device__ __constant__ R para_alpha = 0.1;       // Shakura-Sunyaev alpha
 
 __device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
 __device__ __constant__ R para_nu    = 0.0;       // simple viscosity
@@ -41,7 +42,7 @@ __device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
-  R sint, cost, r;
+  R sint, cost, r, nus;
 
   const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
@@ -91,13 +92,16 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.uz  -= temp * (dz.lnd + dz.lne);
     dt.lne -= div_u * gamma1;
 
+  // Total shear viscosity = molecular + Shakura-Sunyaev
+    nus = para_nus +
+          para_alpha * para_gamma * temp * r * sqrt(r / para_M);
 
   // Non-ideal effects (depend on density and temperature): 30 FLOP
 
     const R srr =  dr.ur - div_u  / K(3.0);
     const R srz = (dz.ur + dr.uz) / K(2.0);
     const R szz =  dz.uz - div_u  / K(3.0);
-    const R two_nus = K(2.0) * para_nus;
+    const R two_nus = K(2.0) * nus;
 
     dt.ur  += two_nus * (srr * dr.lnd + srz * dz.lnd);
     dt.uz  += two_nus * (srz * dr.lnd + szz * dz.lnd);
@@ -112,8 +116,8 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R d12_ur = D12(ur), d12_uz = D12(uz);
     const R d22_ur = D22(ur), d22_uz = D22(uz);
 
-    const R tmp1 = para_nus / (sphr * sphr) + para_nu;
-    const R tmp2 = para_nus / r;
+    const R tmp1 = nus / (sphr * sphr) + para_nu;
+    const R tmp2 = nus / r;
 
     dt.ur  += tmp1 * (d11_ur   + d22_ur  ) + tmp2 * (dr.ur - u->ur / r);
     dt.uz  += tmp1 * (d11_uz   + d22_uz  ) + tmp2 * (dr.uz            );
@@ -127,7 +131,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R drz_ur = cs*(d11_ur - d22_ur)  + c2*d12_ur - cr*dr.ur - sr*dz.ur;
     const R drz_uz = cs*(d11_uz - d22_uz)  + c2*d12_uz - cr*dr.uz - sr*dz.uz;
     const R dzz_uz = cc*d11_uz + ss*d22_uz - s2*d12_uz - cr*dz.uz + sr*dr.uz;
-    const R mixed  = para_nus / K(3.0) + para_nub;
+    const R mixed  = nus / K(3.0) + para_nub;
 
     dt.ur += mixed * (drr_ur + drz_uz + (dr.ur - u->ur / r) / r);
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
