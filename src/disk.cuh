@@ -108,8 +108,9 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Non-ideal effects (only depend on velocity): 149 FLOP
   {
-    const R d11_ur = D11(ur), d12_ur = D12(ur), d22_ur = D22(ur);
-    const R d11_uz = D11(uz), d12_uz = D12(uz), d22_uz = D22(uz);
+    const R d11_ur = D11(ur), d11_uz = D11(uz);
+    const R d12_ur = D12(ur), d12_uz = D12(uz);
+    const R d22_ur = D22(ur), d22_uz = D22(uz);
 
     const R tmp1 = para_nus / (sphr * sphr) + para_nu;
     const R tmp2 = para_nus / r;
