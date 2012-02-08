@@ -19,9 +19,9 @@
 #define PARA_R0 K(3.0)
 
 struct state {
-  R lnd;           // ln(density)
-  R v_r, v_z, Omg; // cylindrical radial, vertical, and angular velocity
-  R lne;           // ln(specific_thermal_energy)
+  R lnd;         // ln(density)
+  R ur, uz, Omg; // cylindrical radial, vertical, and angular velocity
+  R lne;         // ln(specific_thermal_energy)
 };
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
@@ -41,92 +41,89 @@ __device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0};
-  R sin_t, cos_t, r;
+  R sint, cost, r;
 
-  const R sph_r = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
+  const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
   // Derivatives: 135 FLOP
   {
-    const S d1 = {D1(lnd), D1(v_r), D1(v_z), D1(Omg), D1(lne)};
-    const S d2 = {D2(lnd), D2(v_r), D2(v_z), D2(Omg), D2(lne)};
+    const S d1 = {D1(lnd), D1(ur), D1(uz), D1(Omg), D1(lne)};
+    const S d2 = {D2(lnd), D2(ur), D2(uz), D2(Omg), D2(lne)};
 
     const R theta = (j + K(0.5)) * Delta2 ;
-    sincos(theta, &sin_t, &cos_t);
-    r = sph_r * sin_t;
+    sincos(theta, &sint, &cost);
+    r = sphr * sint;
 
-    dr.lnd = (sin_t * d1.lnd + cos_t * d2.lnd) / sph_r;
-    dr.v_r = (sin_t * d1.v_r + cos_t * d2.v_r) / sph_r;
-    dr.v_z = (sin_t * d1.v_z + cos_t * d2.v_z) / sph_r;
-    dr.Omg = (sin_t * d1.Omg + cos_t * d2.Omg) / sph_r;
-    dr.lne = (sin_t * d1.lne + cos_t * d2.lne) / sph_r;
+    dr.lnd = (sint * d1.lnd + cost * d2.lnd) / sphr;
+    dr.ur  = (sint * d1.ur  + cost * d2.ur ) / sphr;
+    dr.uz  = (sint * d1.uz  + cost * d2.uz ) / sphr;
+    dr.Omg = (sint * d1.Omg + cost * d2.Omg) / sphr;
+    dr.lne = (sint * d1.lne + cost * d2.lne) / sphr;
 
-    dz.lnd = (cos_t * d1.lnd - sin_t * d2.lnd) / sph_r;
-    dz.v_r = (cos_t * d1.v_r - sin_t * d2.v_r) / sph_r;
-    dz.v_z = (cos_t * d1.v_z - sin_t * d2.v_z) / sph_r;
-    dz.Omg = (cos_t * d1.Omg - sin_t * d2.Omg) / sph_r;
-    dz.lne = (cos_t * d1.lne - sin_t * d2.lne) / sph_r;
+    dz.lnd = (cost * d1.lnd - sint * d2.lnd) / sphr;
+    dz.ur  = (cost * d1.ur  - sint * d2.ur ) / sphr;
+    dz.uz  = (cost * d1.uz  - sint * d2.uz ) / sphr;
+    dz.Omg = (cost * d1.Omg - sint * d2.Omg) / sphr;
+    dz.lne = (cost * d1.lne - sint * d2.lne) / sphr;
   }
 
   // Advection and pseudo-force: 27 FLOP
   {
-    const R v_r = u->v_r;
-    const R v_z = u->v_z;
+    const R ur  = u->ur ;
+    const R uz  = u->uz ;
     const R Omg = u->Omg;
 
-    dt.lnd -= v_r * dr.lnd + v_z * dz.lnd;
-    dt.v_r -= v_r * dr.v_r + v_z * dz.v_r - Omg * Omg * r;
-    dt.v_z -= v_r * dr.v_z + v_z * dz.v_z;
-    dt.Omg -= v_r * dr.Omg + v_z * dz.Omg + K(2.0) * v_r * Omg / r;
-    dt.lne -= v_r * dr.lne + v_z * dz.lne;
+    dt.lnd -= ur * dr.lnd + uz * dz.lnd;
+    dt.ur  -= ur * dr.ur  + uz * dz.ur - Omg * Omg * r;
+    dt.uz  -= ur * dr.uz  + uz * dz.uz;
+    dt.Omg -= ur * dr.Omg + uz * dz.Omg + K(2.0) * ur * Omg / r;
+    dt.lne -= ur * dr.lne + uz * dz.lne;
   }
 
   // Compressible/pressure effects: 15 FLOP
   {
-    const R gamma_1 = para_gamma - K(1.0);
-    const R temp    = gamma_1 * exp(u->lne);
-    const R div_v   = dr.v_r + dz.v_z + u->v_r / r;
+    const R gamma1 = para_gamma - K(1.0);
+    const R temp   = gamma1 * exp(u->lne);
+    const R div_v  = dr.ur + dz.uz + u->ur / r;
 
     dt.lnd -= div_v;
-    dt.v_r -= temp * (dr.lnd + dr.lne);
-    dt.v_z -= temp * (dz.lnd + dz.lne);
-    dt.lne -= div_v * gamma_1;
+    dt.ur  -= temp * (dr.lnd + dr.lne);
+    dt.uz  -= temp * (dz.lnd + dz.lne);
+    dt.lne -= div_v * gamma1;
   }
 
   // Non-ideal effects (only depend on velocity): 149 FLOP
   {
-    const R d11_v_r = D11(v_r), d12_v_r = D12(v_r), d22_v_r = D22(v_r);
-    const R d11_v_z = D11(v_z), d12_v_z = D12(v_z), d22_v_z = D22(v_z);
+    const R d11_ur = D11(ur), d12_ur = D12(ur), d22_ur = D22(ur);
+    const R d11_uz = D11(uz), d12_uz = D12(uz), d22_uz = D22(uz);
 
-    const R tmp1 = para_nus / (sph_r * sph_r) + para_nu;
+    const R tmp1 = para_nus / (sphr * sphr) + para_nu;
     const R tmp2 = para_nus / r;
 
-    dt.v_r += tmp1 * (d11_v_r  + d22_v_r ) + tmp2 * (dr.v_r - u->v_r / r);
-    dt.v_z += tmp1 * (d11_v_z  + d22_v_z ) + tmp2 * (dr.v_z             );
-    dt.Omg += tmp1 * (D11(Omg) + D22(Omg)) + tmp2 * (dr.Omg * K(3.0)    );
+    dt.ur  += tmp1 * (d11_ur   + d22_ur  ) + tmp2 * (dr.ur - u->ur / r);
+    dt.uz  += tmp1 * (d11_uz   + d22_uz  ) + tmp2 * (dr.uz            );
+    dt.Omg += tmp1 * (D11(Omg) + D22(Omg)) + tmp2 * (dr.Omg * K(3.0)  );
 
-    const R cr = cos_t / sph_r, sr = sin_t / sph_r;
+    const R cr = cost / sphr, sr = sint / sphr;
     const R cc = cr * cr, cs = cr * sr, ss = sr * sr;
     const R c2 = cc - ss, s2 = K(2.0) * cs;
-    const R drr_v_r = ss * d11_v_r + cc * d22_v_r + s2 * d12_v_r
-                    + cr * dz.v_r - sr * dr.v_r;
-    const R drz_v_r = cs * (d11_v_r - d22_v_r)    + c2 * d12_v_r
-                    - cr * dr.v_r - sr * dz.v_r;
-    const R drz_v_z = cs * (d11_v_z - d22_v_z)    + c2 * d12_v_z
-                    - cr * dr.v_z - sr * dz.v_z;
-    const R dzz_v_z = cc * d11_v_z + ss * d22_v_z - s2 * d12_v_z
-                    - cr * dz.v_z + sr * dr.v_z;
-    const R mixed = para_nus / K(3.0) + para_nub;
 
-    dt.v_r += mixed * (drr_v_r + drz_v_z + (dr.v_r - u->v_r / r) / r);
-    dt.v_z += mixed * (drz_v_r + dzz_v_z +  dz.v_r               / r);
+    const R drr_ur = ss*d11_ur + cc*d22_ur + s2*d12_ur + cr*dz.ur - sr*dr.ur;
+    const R drz_ur = cs*(d11_ur - d22_ur)  + c2*d12_ur - cr*dr.ur - sr*dz.ur;
+    const R drz_uz = cs*(d11_uz - d22_uz)  + c2*d12_uz - cr*dr.uz - sr*dz.uz;
+    const R dzz_uz = cc*d11_uz + ss*d22_uz - s2*d12_uz - cr*dz.uz + sr*dr.uz;
+    const R mixed  = para_nus / K(3.0) + para_nub;
+
+    dt.ur += mixed * (drr_ur + drz_uz + (dr.ur - u->ur / r) / r);
+    dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
   // Density diffusion and thermal conductivity: 69 FLOP
   {
-    const R sph_r_2 = sph_r * sph_r;
-    const R d_lnd_2 = (dr.lnd * dr.lnd + dz.lnd * dz.lnd) * sph_r_2;
-    const R d_lne_2 = (dr.lne * dr.lne + dz.lne * dz.lne) * sph_r_2;
-    const R ed      = para_ed + para_kappa * (para_gamma - K(1.0)) / sph_r_2;
+    const R sphr_2  = sphr * sphr;
+    const R d_lnd_2 = (dr.lnd * dr.lnd + dz.lnd * dz.lnd) * sphr_2;
+    const R d_lne_2 = (dr.lne * dr.lne + dz.lne * dz.lne) * sphr_2;
+    const R ed      = para_ed + para_kappa * (para_gamma - K(1.0)) / sphr_2;
 
     dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
     dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2);
@@ -134,11 +131,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // External force: 7 FLOP
   {
-    const R tmp = sph_r - para_rS;
-    const R g_r = para_M / (tmp * tmp);
+    const R tmp = sphr - para_rS;
+    const R gr  = para_M / (tmp * tmp);
 
-    dt.v_r -= sin_t * g_r;
-    dt.v_z -= cos_t * g_r;
+    dt.ur -= sint * gr;
+    dt.uz -= cost * gr;
   }
 
   return dt;
