@@ -16,6 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+#define BCOND_CU
 #include "fg2.h"
 
 static void shuffle(R *x, R *y, const Z off, const Z h, const Z n)
@@ -62,14 +63,7 @@ static __global__ void customize(R *x, const Z n, const Z s)
   Z d = blockIdx.y ? n - (1 + threadIdx.y) :   (    threadIdx.y);
   Z g = blockIdx.y ? n + (    threadIdx.y) : - (1 + threadIdx.y);
 
-  R X = x[d * NVAR + threadIdx.x];
-  switch(threadIdx.x) {
-  case 0:         break;
-  case 1:         break;
-  case 2: X = -X; break; // v2 = 0 at boundary
-  case 3:         break;
-  }
-  x[g * NVAR + threadIdx.x] = X;
+  x[g * NVAR + threadIdx.x] = transform(x[d * NVAR + threadIdx.x]);
 }
 
 static void reflect2(R *x)

@@ -17,46 +17,62 @@
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
 struct state {
-  R ld;     // ln(density)
+  R lnd;    // ln(density)
   R u1, u2; // velocity
-  R le;     // ln(specific_thermal_energy)
+  R lne;    // ln(specific_thermal_energy)
 };
 
 #ifdef KICK_CU ///////////////////////////////////////////////////////////////
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
-__device__ __constant__ R para_dd    = 0.0;       // density diffusion
 __device__ __constant__ R para_nus   = 2.0e-4;    // shear viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk  viscosity
 __device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
 
+__device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
+
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
-  S dt = {0.0, 0.0, 0.0, 0.0};
+  const S d1 = {D1(lnd), D1(u1), D1(u2), D1(lne)}; // 36 FLOP
+  const S d2 = {D2(lnd), D2(u1), D2(u2), D2(lne)}; // 36 FLOP
 
-  const S d1      = {D1(ld), D1(u1), D1(u2), D1(le)}; // 36 FLOP
-  const S d2      = {D2(ld), D2(u1), D2(u2), D2(le)}; // 36 FLOP
-  const R gamma_1 = para_gamma - K(1.0);              // 1 FLOP
-  const R temp    = gamma_1 * exp(u->le);             // 2 FLOP
-  const R div_u   = d1.u1 + d2.u2;                    // 1 FLOP
+  S dt = {0.0, 0.0, 0.0, 0.0};
 
   // Advection: 16 FLOP
   {
     const R u1 = u->u1;
     const R u2 = u->u2;
 
-    dt.ld -= u1 * d1.ld + u2 * d2.ld;
-    dt.u1 -= u1 * d1.u1 + u2 * d2.u1;
-    dt.u2 -= u1 * d1.u2 + u2 * d2.u2;
-    dt.le -= u1 * d1.le + u2 * d2.le;
+    dt.lnd -= u1 * d1.lnd + u2 * d2.lnd;
+    dt.u1  -= u1 * d1.u1  + u2 * d2.u1 ;
+    dt.u2  -= u1 * d1.u2  + u2 * d2.u2 ;
+    dt.lne -= u1 * d1.lne + u2 * d2.lne;
   }
 
-  // Compressible/pressure effects: 9 FLOP
+  // Compressible/pressure effects: 13 FLOP
   {
-    dt.ld -= div_u;
-    dt.u1 -= temp * (d1.ld + d1.le);
-    dt.u2 -= temp * (d2.ld + d2.le);
-    dt.le -= div_u * gamma_1;
+    const R gamma1 = para_gamma - K(1.0);
+    const R temp   = gamma1 * exp(u->lne);
+    const R div_u  = d1.u1 + d2.u2;
+
+    dt.lnd -= div_u;
+    dt.u1  -= temp * (d1.lnd + d1.lne);
+    dt.u2  -= temp * (d2.lnd + d2.lne);
+    dt.lne -= div_u * gamma1;
+
+
+  // Non-ideal effects (depend on density and temperature): 30 FLOP
+
+    const R s11 =  d1.u1 - div_u  / K(3.0);
+    const R s12 = (d1.u2 + d2.u1) / K(2.0);
+    const R s22 =  d2.u2 - div_u  / K(3.0);
+    const R two_nus = K(2.0) * para_nus;
+
+    dt.u1  += two_nus * (s11 * d1.lnd + s12 * d2.lnd);
+    dt.u2  += two_nus * (s12 * d1.lnd + s22 * d2.lnd);
+    dt.lne += (gamma1 / temp) *
+      (two_nus * (s11 * s11 + K(2.0) * s12 * s12 + s22 * s22) +
+       para_nub * div_u * div_u);
   }
 
   // Non-ideal effects (only depend on velocity): 94 FLOP
@@ -64,39 +80,21 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R d11_u1 = D11(u1), d11_u2 = D11(u2);
     const R d12_u1 = D12(u1), d12_u2 = D12(u2);
     const R d22_u1 = D22(u1), d22_u2 = D22(u2);
-    const R mixed = para_nus / K(3.0) + para_nub;
+    const R mixed  = para_nus / K(3.0) + para_nub;
 
     dt.u1 += para_nus * (d11_u1 + d22_u1) + mixed * (d11_u1 + d12_u2);
     dt.u2 += para_nus * (d11_u2 + d22_u2) + mixed * (d12_u1 + d22_u2);
   }
 
-  // Non-ideal effects (also depend on density and temperature): 30 FLOP
+  // Density diffusion and thermal conductivity: 64 FLOP
   {
-    const R s11 =  d1.u1 - div_u  / K(3.0);
-    const R s12 = (d1.u2 + d2.u1) / K(2.0);
-    const R s22 =  d2.u2 - div_u  / K(3.0);
-    const R two_nus = K(2.0) * para_nus;
+    const R d_lnd_2 = d1.lnd * d1.lnd + d2.lnd + d2.lnd;
+    const R d_lne_2 = d1.lne * d1.lne + d2.lne * d2.lne;
+    const R ed      = (para_gamma - K(1.0)) * para_kappa;
 
-    dt.u1 += two_nus * (s11 * d1.ld + s12 * d2.ld);
-    dt.u2 += two_nus * (s12 * d1.ld + s22 * d2.ld);
-    dt.le += (gamma_1 / temp) *
-      (two_nus * (s11 * s11 + K(2.0) * s12 * s12 + s22 * s22) +
-       para_nub * div_u * div_u);
+    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
+    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2);
   }
-
-  // Density diffusion and thermal conductivity: 63 FLOP
-  {
-    const R ed = gamma_1 * para_kappa;
-    dt.ld += para_dd * (D11(ld) + D22(ld) + d1.ld * d1.ld + d2.ld + d2.ld);
-    dt.le +=      ed * (D11(le) + D22(le) + d1.le * d1.le + d2.le * d2.le);
-  }
-
-  // External source terms
-  /* {
-    const R x = (i + K(0.5)) * Delta1 - K(0.5);
-    const R y = (j + K(0.5)) * Delta2 - K(0.5);
-    dt.le += exp(- 20 * x * x - 80 * y * y); // heat source
-  } */
 
   return dt;
 }
@@ -110,7 +108,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (288 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (289 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
@@ -119,6 +117,19 @@ static void config(void)
   const R Delta[] = {l1 / n1, l2 / n2};
   cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
   cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
+}
+
+#elif defined(BCOND_CU) //////////////////////////////////////////////////////
+
+static __device__ R transform(R x)
+{
+  switch(threadIdx.x) {
+  case 0:         break;
+  case 1:         break;
+  case 2: x = -x; break; // u2 = 0 boundary
+  case 3:         break;
+  }
+  return x;
 }
 
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////

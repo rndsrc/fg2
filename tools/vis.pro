@@ -34,7 +34,7 @@ pro vis, i, rtheta=rtheta, all=all, png=png
   if png then begin
     dsaved = !d.name
     set_plot, 'z'
-    device, decompose=0, set_resolution=[1024, 1024]
+    device, decompose=0, set_resolution=[1024, 1024], set_pixel_depth=24
   endif else if !d.window eq -1 then begin
     window, xSize=1024, ySize=1024, retain=2
     device, decompose=0
@@ -44,7 +44,7 @@ pro vis, i, rtheta=rtheta, all=all, png=png
     psaved=!p.multi
     !p.multi=[0,2,2]
     x = data.x
-    y = data.x
+    y = data.y
     shade_surf, data.d[*,*,0], x, y, charsize=2
     shade_surf, data.d[*,*,1], x, y, charsize=2
     shade_surf, data.d[*,*,2], x, y, charsize=2
@@ -57,12 +57,12 @@ pro vis, i, rtheta=rtheta, all=all, png=png
       tvscl, reverse(d)
       tvscl, d, 1
     endif else begin
-      tvscl, data.d[*,*,0]
+      tvscl, congrid(data.d[*,*,0], 1024, 1024)
     endelse
   endelse
 
   if png then begin
-    write_png, string(i, format='(i04)') + '.png', tvrd()
+    write_png, string(i, format='(i04)') + '.png', tvrd(/true)
     set_plot, dsaved
   endif
 
