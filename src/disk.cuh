@@ -190,6 +190,19 @@ static void config(void)
   cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 }
 
+#elif defined(BCOND_CU) //////////////////////////////////////////////////////
+
+static __device__ R transform(R x)
+{
+  switch(threadIdx.x) {
+  case 0:         break;
+  case 1: x = -x; break; // ur = 0 at pole
+  case 2:         break;
+  case 3:         break;
+  }
+  return x;
+}
+
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////
 
 static R M;

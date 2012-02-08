@@ -119,6 +119,19 @@ static void config(void)
   cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 }
 
+#elif defined(BCOND_CU) //////////////////////////////////////////////////////
+
+static __device__ R transform(R x)
+{
+  switch(threadIdx.x) {
+  case 0:         break;
+  case 1:         break;
+  case 2: x = -x; break; // u2 = 0 boundary
+  case 3:         break;
+  }
+  return x;
+}
+
 #elif defined(INIT_CPP) //////////////////////////////////////////////////////
 
 static R poly_gamma;
