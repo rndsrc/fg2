@@ -40,7 +40,7 @@ __device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
-  S dr, dz, dt = {0.0, 0.0, 0.0, 0.0};
+  S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
   R sint, cost, r;
 
   const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
@@ -84,12 +84,26 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   {
     const R gamma1 = para_gamma - K(1.0);
     const R temp   = gamma1 * exp(u->lne);
-    const R div_v  = dr.ur + dz.uz + u->ur / r;
+    const R div_u  = dr.ur + dz.uz + u->ur / r;
 
-    dt.lnd -= div_v;
+    dt.lnd -= div_u;
     dt.ur  -= temp * (dr.lnd + dr.lne);
     dt.uz  -= temp * (dz.lnd + dz.lne);
-    dt.lne -= div_v * gamma1;
+    dt.lne -= div_u * gamma1;
+
+
+  // Non-ideal effects (depend on density and temperature): 30 FLOP
+
+    const R srr =  dr.ur - div_u  / K(3.0);
+    const R srz = (dz.ur + dr.uz) / K(2.0);
+    const R szz =  dz.uz - div_u  / K(3.0);
+    const R two_nus = K(2.0) * para_nus;
+
+    dt.ur  += two_nus * (srr * dr.lnd + srz * dz.lnd);
+    dt.uz  += two_nus * (srz * dr.lnd + szz * dz.lnd);
+    dt.lne += (gamma1 / temp) *
+      (two_nus * (srr * srr + K(2.0) * srz * srz + szz * szz) +
+       para_nub * div_u * div_u);
   }
 
   // Non-ideal effects (only depend on velocity): 149 FLOP
