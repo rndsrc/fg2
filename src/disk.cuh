@@ -28,30 +28,31 @@ struct state {
 
 __device__ __constant__ R para_M     = 1.0;       // mass of central black hole
 __device__ __constant__ R para_rS    = 2.0;       // Schwarzschild radius
+
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
+__device__ __constant__ R para_nus   = 2.0e-4;    // shear  viscosity
+__device__ __constant__ R para_nub   = 0.0;       // bulk   viscosity
+__device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
 
 __device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
-__device__ __constant__ R para_ad    = 0.0;       // simple viscosity
-__device__ __constant__ R para_vd    = 0.0;       // simple viscosity
-__device__ __constant__ R para_ld    = 0.0;       // simple viscosity
-__device__ __constant__ R para_ed    = 0.0;       // simple conductivity
+__device__ __constant__ R para_nu    = 0.0;       // simple viscosity
+__device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0};
-  R r, d_lnd_2, d_lne_2;
+  R sin_t, cos_t, r;
 
-  // Derivatives and gravity: 152
+  const R sph_r = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
+
+  // Derivatives: 135 FLOP
   {
-    const R sph_r = PARA_R0 * exp((i + K(0.5)) * Delta1);
-    const R theta =               (j + K(0.5)) * Delta2 ;
-    const R sin_t = sin(theta);
-    const R cos_t = cos(theta);
-
-    r = sph_r * sin_t;
-
     const S d1 = {D1(lnd), D1(v_r), D1(v_z), D1(Omg), D1(lne)};
     const S d2 = {D2(lnd), D2(v_r), D2(v_z), D2(Omg), D2(lne)};
+
+    const R theta = (j + K(0.5)) * Delta2 ;
+    sincos(theta, &sin_t, &cos_t);
+    r = sph_r * sin_t;
 
     dr.lnd = (sin_t * d1.lnd + cos_t * d2.lnd) / sph_r;
     dr.v_r = (sin_t * d1.v_r + cos_t * d2.v_r) / sph_r;
@@ -64,15 +65,6 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dz.v_z = (cos_t * d1.v_z - sin_t * d2.v_z) / sph_r;
     dz.Omg = (cos_t * d1.Omg - sin_t * d2.Omg) / sph_r;
     dz.lne = (cos_t * d1.lne - sin_t * d2.lne) / sph_r;
-
-    d_lnd_2 = d1.lnd * d1.lnd + d2.lnd * d2.lnd;
-    d_lne_2 = d1.lne * d1.lne + d2.lne * d2.lne;
-
-    const R tmp = sph_r - para_rS;
-    const R g_r = para_M / (tmp * tmp);
-
-    dt.v_r -= sin_t * g_r;
-    dt.v_z -= cos_t * g_r;
   }
 
   // Advection and pseudo-force: 27 FLOP
@@ -100,13 +92,53 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= div_v * gamma_1;
   }
 
-  // Simple diffusion --- take care ln() but no geometric factors: 132 FLOP
+  // Non-ideal effects (only depend on velocity): 149 FLOP
   {
+    const R d11_v_r = D11(v_r), d12_v_r = D12(v_r), d22_v_r = D22(v_r);
+    const R d11_v_z = D11(v_z), d12_v_z = D12(v_z), d22_v_z = D22(v_z);
+
+    const R tmp1 = para_nus / (sph_r * sph_r) + para_nu;
+    const R tmp2 = para_nus / r;
+
+    dt.v_r += tmp1 * (d11_v_r  + d22_v_r ) + tmp2 * (dr.v_r - u->v_r / r);
+    dt.v_z += tmp1 * (d11_v_z  + d22_v_z ) + tmp2 * (dr.v_z             );
+    dt.Omg += tmp1 * (D11(Omg) + D22(Omg)) + tmp2 * (dr.Omg * K(3.0)    );
+
+    const R cr = cos_t / sph_r, sr = sin_t / sph_r;
+    const R cc = cr * cr, cs = cr * sr, ss = sr * sr;
+    const R c2 = cc - ss, s2 = K(2.0) * cs;
+    const R drr_v_r = ss * d11_v_r + cc * d22_v_r + s2 * d12_v_r
+                    + cr * dz.v_r - sr * dr.v_r;
+    const R drz_v_r = cs * (d11_v_r - d22_v_r)    + c2 * d12_v_r
+                    - cr * dr.v_r - sr * dz.v_r;
+    const R drz_v_z = cs * (d11_v_z - d22_v_z)    + c2 * d12_v_z
+                    - cr * dr.v_z - sr * dz.v_z;
+    const R dzz_v_z = cc * d11_v_z + ss * d22_v_z - s2 * d12_v_z
+                    - cr * dz.v_z + sr * dr.v_z;
+    const R mixed = para_nus / K(3.0) + para_nub;
+
+    dt.v_r += mixed * (drr_v_r + drz_v_z + (dr.v_r - u->v_r / r) / r);
+    dt.v_z += mixed * (drz_v_r + dzz_v_z +  dz.v_r               / r);
+  }
+
+  // Density diffusion and thermal conductivity: 69 FLOP
+  {
+    const R sph_r_2 = sph_r * sph_r;
+    const R d_lnd_2 = (dr.lnd * dr.lnd + dz.lnd * dz.lnd) * sph_r_2;
+    const R d_lne_2 = (dr.lne * dr.lne + dz.lne * dz.lne) * sph_r_2;
+    const R ed      = para_ed + para_kappa * (para_gamma - K(1.0)) / sph_r_2;
+
     dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
-    dt.v_r += para_ad * (D11(v_r) + D22(v_r));
-    dt.v_z += para_vd * (D11(v_z) + D22(v_z));
-    dt.Omg += para_ld * (D11(Omg) + D22(Omg));
-    dt.lne += para_ed * (D11(lne) + D22(lne) + d_lne_2);
+    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2);
+  }
+
+  // External force: 7 FLOP
+  {
+    const R tmp = sph_r - para_rS;
+    const R g_r = para_M / (tmp * tmp);
+
+    dt.v_r -= sin_t * g_r;
+    dt.v_z -= cos_t * g_r;
   }
 
   return dt;
@@ -131,7 +163,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (326 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (406 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
