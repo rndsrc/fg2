@@ -42,7 +42,7 @@ __device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
-  R sint, cost, r, nus;
+  R sint, cost, r, nuSS;
 
   const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
@@ -92,32 +92,38 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.uz  -= temp * (dz.lnd + dz.lne);
     dt.lne -= div_u * gamma1;
 
-  // Total shear viscosity = molecular + Shakura-Sunyaev
-    nus = para_nus +
-          para_alpha * para_gamma * temp * r * sqrt(r / para_M);
 
-  // Non-ideal effects (depend on density and temperature): 30 FLOP
+  // Total shear viscosity = molecular + Shakura-Sunyaev: 6 FLOP
+    nuSS = para_alpha * para_gamma * temp * r * sqrt(r / para_M);
 
-    const R srr =  dr.ur - div_u  / K(3.0);
-    const R srz = (dz.ur + dr.uz) / K(2.0);
-    const R szz =  dz.uz - div_u  / K(3.0);
-    const R two_nus = K(2.0) * nus;
 
-    dt.ur  += two_nus * (srr * dr.lnd + srz * dz.lnd);
-    dt.uz  += two_nus * (srz * dr.lnd + szz * dz.lnd);
+  // Non-ideal effects (depend on density and temperature): 48 FLOP
+
+    const R Srr =  dr.ur - div_u  / K(3.0);
+    const R Szz =  dz.uz - div_u  / K(3.0);
+    const R Spp =        - div_u  / K(3.0);
+    const R Srz = (dz.ur + dr.uz) / K(2.0);
+    const R szp =  dz.Omg         / K(2.0); // == Szp / r
+    const R spr =  dr.Omg         / K(2.0); // == Spr / r
+    const R two_nus = K(2.0) * (para_nus + nuSS);
+
+    dt.ur  += two_nus * (Srr * dr.lnd + Srz * dz.lnd);
+    dt.uz  += two_nus * (Srz * dr.lnd + Szz * dz.lnd);
+    dt.Omg += two_nus * (spr * dr.lnd + szp * dz.lnd);
     dt.lne += (gamma1 / temp) *
-      (two_nus * (srr * srr + K(2.0) * srz * srz + szz * szz) +
+      (two_nus * (Srr * Srr + Szz * Szz + Spp * Spp +
+        K(2.0) * (Srz * Srz +(szp * szp + spr * spr)* r * r)) +
        para_nub * div_u * div_u);
   }
 
-  // Non-ideal effects (only depend on velocity): 149 FLOP
+  // Non-ideal effects (only depend on velocity): 157 FLOP
   {
     const R d11_ur = D11(ur), d11_uz = D11(uz);
     const R d12_ur = D12(ur), d12_uz = D12(uz);
     const R d22_ur = D22(ur), d22_uz = D22(uz);
 
-    const R tmp1 = nus / (sphr * sphr) + para_nu;
-    const R tmp2 = nus / r;
+    const R tmp1 = (para_nus + nuSS) / (sphr * sphr) + para_nu;
+    const R tmp2 = (para_nus + nuSS) / r;
 
     dt.ur  += tmp1 * (d11_ur   + d22_ur  ) + tmp2 * (dr.ur - u->ur / r);
     dt.uz  += tmp1 * (d11_uz   + d22_uz  ) + tmp2 * (dr.uz            );
@@ -131,21 +137,22 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R drz_ur = cs*(d11_ur - d22_ur)  + c2*d12_ur - cr*dr.ur - sr*dz.ur;
     const R drz_uz = cs*(d11_uz - d22_uz)  + c2*d12_uz - cr*dr.uz - sr*dz.uz;
     const R dzz_uz = cc*d11_uz + ss*d22_uz - s2*d12_uz - cr*dz.uz + sr*dr.uz;
-    const R mixed  = nus / K(3.0) + para_nub;
+    const R mixed  = (para_nus + nuSS) / K(3.0) + para_nub;
 
     dt.ur += mixed * (drr_ur + drz_uz + (dr.ur - u->ur / r) / r);
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
-  // Density diffusion and thermal conductivity: 69 FLOP
+  // Density diffusion and thermal conductivity: 71 FLOP
   {
     const R sphr_2  = sphr * sphr;
-    const R d_lnd_2 = (dr.lnd * dr.lnd + dz.lnd * dz.lnd) * sphr_2;
-    const R d_lne_2 = (dr.lne * dr.lne + dz.lne * dz.lne) * sphr_2;
-    const R ed      = para_ed + para_kappa * (para_gamma - K(1.0)) / sphr_2;
+    const R d_lnd_2 = dr.lnd * dr.lnd + dz.lnd * dz.lnd;
+    const R d_lne_2 = dr.lne * dr.lne + dz.lne * dz.lne;
+    const R ed      = para_ed +
+      (para_kappa * (para_gamma - K(1.0)) + para_gamma * nuSS) / sphr_2;
 
-    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
-    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2);
+    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2 * sphr_2);
+    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2 * sphr_2);
   }
 
   // External force: 7 FLOP
@@ -179,7 +186,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (406 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (470 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
