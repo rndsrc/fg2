@@ -33,7 +33,7 @@ __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
 __device__ __constant__ R para_nus   = 0.0;       // shear  viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk   viscosity
 __device__ __constant__ R para_kappa = 0.0;       // thermal conductivity
-__device__ __constant__ R para_alpha = 0.1;       // Shakura-Sunyaev alpha
+__device__ __constant__ R para_alpha = 0.01;      // Shakura-Sunyaev alpha
 
 __device__ __constant__ R para_dd    = 1.0e-4;    // simple density diffusion
 __device__ __constant__ R para_nu    = 2.0e-4;    // simple viscosity
