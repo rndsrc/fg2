@@ -81,11 +81,12 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= ur * dr.lne + uz * dz.lne;
   }
 
-  // Compressible/pressure effects: 15 FLOP
+  // Compressible/pressure effects: 16 FLOP
   {
     const R gamma1 = para_gamma - K(1.0);
     const R temp   = gamma1 * exp(u->lne);
-    const R div_u  = dr.ur + dz.uz + u->ur / r;
+    const R ur_r   = u->ur / r;
+    const R div_u  = dr.ur + dz.uz + ur_r;
 
     dt.lnd -= div_u;
     dt.ur  -= temp * (dr.lnd + dr.lne);
@@ -101,7 +102,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
     const R Srr =  dr.ur - div_u  / K(3.0);
     const R Szz =  dz.uz - div_u  / K(3.0);
-    const R Spp =        - div_u  / K(3.0);
+    const R Spp =  ur_r  - div_u  / K(3.0);
     const R Srz = (dz.ur + dr.uz) / K(2.0);
     const R szp =  dz.Omg         / K(2.0); // == Szp / r
     const R spr =  dr.Omg         / K(2.0); // == Spr / r
@@ -186,7 +187,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (470 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (471 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
