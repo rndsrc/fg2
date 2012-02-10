@@ -18,6 +18,8 @@
 
 #include "fg2.h"
 
+__device__ int contain_nan = 0;
+
 static __global__ void kernel(R *x, const R *v, const R dt,
                               const Z n, const Z s)
 {
@@ -25,6 +27,7 @@ static __global__ void kernel(R *x, const R *v, const R dt,
   if(j < n) {
     const Z h = blockIdx.y * s + j;
     x[h] += dt * v[h];
+    if(x[h] != x[h]) contain_nan = 1; // IEEE standard: nan != nan
   }
 }
 

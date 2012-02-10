@@ -30,19 +30,19 @@ __device__ __constant__ R para_M     = 1.0;       // mass of central black hole
 __device__ __constant__ R para_rS    = 2.0;       // Schwarzschild radius
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
-__device__ __constant__ R para_nus   = 2.0e-4;    // shear  viscosity
+__device__ __constant__ R para_nus   = 0.0;       // shear  viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk   viscosity
-__device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
-__device__ __constant__ R para_alpha = 0.1;       // Shakura-Sunyaev alpha
+__device__ __constant__ R para_kappa = 0.0;       // thermal conductivity
+__device__ __constant__ R para_alpha = 0.01;      // Shakura-Sunyaev alpha
 
-__device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
-__device__ __constant__ R para_nu    = 0.0;       // simple viscosity
-__device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
+__device__ __constant__ R para_dd    = 1.0e-4;    // simple density diffusion
+__device__ __constant__ R para_nu    = 2.0e-4;    // simple viscosity
+__device__ __constant__ R para_ed    = 5.0e-4;    // simple density diffusion
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
-  R sint, cost, r, nus;
+  R sint, cost, r, nuSS;
 
   const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
@@ -81,43 +81,50 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= ur * dr.lne + uz * dz.lne;
   }
 
-  // Compressible/pressure effects: 15 FLOP
+  // Compressible/pressure effects: 16 FLOP
   {
     const R gamma1 = para_gamma - K(1.0);
     const R temp   = gamma1 * exp(u->lne);
-    const R div_u  = dr.ur + dz.uz + u->ur / r;
+    const R ur_r   = u->ur / r;
+    const R div_u  = dr.ur + dz.uz + ur_r;
 
     dt.lnd -= div_u;
     dt.ur  -= temp * (dr.lnd + dr.lne);
     dt.uz  -= temp * (dz.lnd + dz.lne);
     dt.lne -= div_u * gamma1;
 
-  // Total shear viscosity = molecular + Shakura-Sunyaev
-    nus = para_nus +
-          para_alpha * para_gamma * temp * r * sqrt(r / para_M);
 
-  // Non-ideal effects (depend on density and temperature): 30 FLOP
+  // Total shear viscosity = molecular + Shakura-Sunyaev: 6 FLOP
+    nuSS = para_alpha * para_gamma * temp * r * sqrt(r / para_M);
 
-    const R srr =  dr.ur - div_u  / K(3.0);
-    const R srz = (dz.ur + dr.uz) / K(2.0);
-    const R szz =  dz.uz - div_u  / K(3.0);
-    const R two_nus = K(2.0) * nus;
 
-    dt.ur  += two_nus * (srr * dr.lnd + srz * dz.lnd);
-    dt.uz  += two_nus * (srz * dr.lnd + szz * dz.lnd);
+  // Non-ideal effects (depend on density and temperature): 48 FLOP
+
+    const R Srr =  dr.ur - div_u  / K(3.0);
+    const R Szz =  dz.uz - div_u  / K(3.0);
+    const R Spp =  ur_r  - div_u  / K(3.0);
+    const R Srz = (dz.ur + dr.uz) / K(2.0);
+    const R szp =  dz.Omg         / K(2.0); // == Szp / r
+    const R spr =  dr.Omg         / K(2.0); // == Spr / r
+    const R two_nus = K(2.0) * (para_nus + nuSS);
+
+    dt.ur  += two_nus * (Srr * dr.lnd + Srz * dz.lnd);
+    dt.uz  += two_nus * (Srz * dr.lnd + Szz * dz.lnd);
+    dt.Omg += two_nus * (spr * dr.lnd + szp * dz.lnd);
     dt.lne += (gamma1 / temp) *
-      (two_nus * (srr * srr + K(2.0) * srz * srz + szz * szz) +
+      (two_nus * (Srr * Srr + Szz * Szz + Spp * Spp +
+        K(2.0) * (Srz * Srz +(szp * szp + spr * spr)* r * r)) +
        para_nub * div_u * div_u);
   }
 
-  // Non-ideal effects (only depend on velocity): 149 FLOP
+  // Non-ideal effects (only depend on velocity): 157 FLOP
   {
     const R d11_ur = D11(ur), d11_uz = D11(uz);
     const R d12_ur = D12(ur), d12_uz = D12(uz);
     const R d22_ur = D22(ur), d22_uz = D22(uz);
 
-    const R tmp1 = nus / (sphr * sphr) + para_nu;
-    const R tmp2 = nus / r;
+    const R tmp1 = (para_nus + nuSS) / (sphr * sphr) + para_nu;
+    const R tmp2 = (para_nus + nuSS) / r;
 
     dt.ur  += tmp1 * (d11_ur   + d22_ur  ) + tmp2 * (dr.ur - u->ur / r);
     dt.uz  += tmp1 * (d11_uz   + d22_uz  ) + tmp2 * (dr.uz            );
@@ -131,21 +138,22 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R drz_ur = cs*(d11_ur - d22_ur)  + c2*d12_ur - cr*dr.ur - sr*dz.ur;
     const R drz_uz = cs*(d11_uz - d22_uz)  + c2*d12_uz - cr*dr.uz - sr*dz.uz;
     const R dzz_uz = cc*d11_uz + ss*d22_uz - s2*d12_uz - cr*dz.uz + sr*dr.uz;
-    const R mixed  = nus / K(3.0) + para_nub;
+    const R mixed  = (para_nus + nuSS) / K(3.0) + para_nub;
 
     dt.ur += mixed * (drr_ur + drz_uz + (dr.ur - u->ur / r) / r);
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
-  // Density diffusion and thermal conductivity: 69 FLOP
+  // Density diffusion and thermal conductivity: 71 FLOP
   {
     const R sphr_2  = sphr * sphr;
-    const R d_lnd_2 = (dr.lnd * dr.lnd + dz.lnd * dz.lnd) * sphr_2;
-    const R d_lne_2 = (dr.lne * dr.lne + dz.lne * dz.lne) * sphr_2;
-    const R ed      = para_ed + para_kappa * (para_gamma - K(1.0)) / sphr_2;
+    const R d_lnd_2 = dr.lnd * dr.lnd + dz.lnd * dz.lnd;
+    const R d_lne_2 = dr.lne * dr.lne + dz.lne * dz.lne;
+    const R ed      = para_ed +
+      (para_kappa * (para_gamma - K(1.0)) + para_gamma * nuSS) / sphr_2;
 
-    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2);
-    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2);
+    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2 * sphr_2);
+    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2 * sphr_2);
   }
 
   // External force: 7 FLOP
@@ -179,7 +187,7 @@ static void config(void)
   // Compute floating point operation and bandwidth per step
   const Z m1 = n1 + ORDER;
   const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (406 + NVAR * 2.0)); // assume FMA
+  flops = 3 * ((n1 * n2) * (471 + NVAR * 2.0)); // assume FMA
   bps   = 3 * ((m1 * m2) * 1.0 +
                (n1 * n2) * 5.0 +
                (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
@@ -222,84 +230,29 @@ static S Hawley(R lnr, R theta)
   const R r     = PARA_R0 * exp(lnr);
   const R cyl_r = r * sin(theta);
 
-  // We use something very similar to the steady state torus solution
-  // given by Hawley (2000) as our initial condition.  The density is
-  // given implicitly by equation (7) in the paper:
-  //
-  //   Gamma K P / (Gamma - 1) rho = C - Psi - lK^2 / (2q - 2) R^(2q - 2)
-  //
-  // By comparing the dimensions of different terms on the right hand
-  // side, it is clear that R must be dimensionless.  Indeed, Hawley
-  // choice the Schwarzschild radius rS = 1.  This automatically gives
-  // Psi ~ c^2.
-  //
-  // Using P = K rho^Gamma, the "pressure acceleration" from the left
-  // hand side is
-  //
-  //   grad(LHS) / rho = Gamma K^2 rho^(Gamma - 2) grad(rho)
-  //
-  // Comparing this term with grad(P) / rho, it seems the extra
-  // polytropic constant "K" is a typo.  We will drop it when we
-  // construct our initial condition.
-  //
-  // The integration constant C controls the size of the torus.  In
-  // the Hawley (2000) paper, it is solved by fixing the inner edge of
-  // the torus.  Nevertheless, this constant physically controls the
-  // temperature, which gives raise to the scale height etc.  To see
-  // this, the centrifugal support *almost* cancels gravity at the
-  // pressure maximum so we left with
-  //
-  //   Gamma P / (Gamma - 1) rho = Gamma kB T / (Gamma - 1) mu mH ~ C
-  //
-  // The contant C determines the temperature at the pressure maximum,
-  // and vice versa.  In this file, we will use the temperature, or
-  // specific thermal energy, at the pressure maximum, tmp0, (and
-  // other parameters) to choose C.
-
   // Setup parameters
   const R q0 =  2.0;
   const R r0 = 16.0;
   const R d0 =  1.0;
   const R e0 =  0.01;
-  const R d1 =  0.01;
-  const R e1 =  0.01;
+  const R bg =  0.0001;
 
-  // Shorthands
   const R g1 = Gamma - 1.0;
   const R q1 = 2.0 * q0 - 2.0;
+  const R lK = sqrt(M * pow(r0, q1 - 1.0));
+  const R K  = (g1 * e0) / pow(d0, g1);
 
-  // "Specific angular momentum" at pressure maximum: taking the
-  // derivative of the right hand side of equation (7) in Hawley
-  // (2000), we know the following holds at the pressure maximum
-  //
-  //   G M / (r - rS)^2 = lK^2 / r^(2 q - 1)
-  //
-  // Therefore, the following formula is exact and it fixes the unit
-  // problem
+  R den = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1)
+                      + M / r  - lK * lK / (pow(cyl_r, q1) * q1);
+  if(den > 0.0) den =  pow( den * g1 / (Gamma * K), 1.0 / g1);
+  else          den = -pow(-den * g1 / (Gamma * K), 1.0 / g1);
 
-  const R lK = sqrt(M * pow(r0, q1) * r0) / r0;
-
-  // We drop the extra polytropic constant in the left hand side.  We
-  // also use specific thermal energy to specify the polytropic and
-  // integration constant
-
-  const R K    = (g1 * e0) / pow(d0, g1);
-  const R c0   = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1);
-        R prof =         c0 + M / r  - lK * lK / (pow(cyl_r, q1) * q1);
-
-  if(prof > 0.0) prof =  pow( prof * g1 / (Gamma * K), 1.0 / g1);
-  else           prof = -pow(-prof * g1 / (Gamma * K), 1.0 / g1);
-
-  R den, Omg, eng;
-  if(prof > d0 * d1) {
-    den = prof;
-    Omg = lK * pow(cyl_r, -q0);
-    eng =  K * pow(den, g1) / g1;
-  } else {
-    den = d0 * d1;
-    Omg = 0.0;
-    eng = K * pow(den, g1) / g1 * e1;
+  R Omg = lK * pow(cyl_r, -q0);
+  if(den < bg) {
+    den  = bg;
+    Omg *= sin(theta) * sin(theta);
   }
+  R eng =  K * pow(den, g1) / g1;
 
   return (S){log(den), 0.0, 0.0, Omg, log(eng)};
 }

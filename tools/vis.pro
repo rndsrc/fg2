@@ -41,14 +41,12 @@ pro vis, i, rtheta=rtheta, all=all, png=png
   endif
 
   if all then begin
+    n = size(data.d) & n = n[3]
     psaved=!p.multi
-    !p.multi=[0,2,2]
+    if n gt 1 then !p.multi=[0,2,(n-1)/2+1]
     x = data.x
     y = data.y
-    shade_surf, data.d[*,*,0], x, y, charsize=2
-    shade_surf, data.d[*,*,1], x, y, charsize=2
-    shade_surf, data.d[*,*,2], x, y, charsize=2
-    shade_surf, data.d[*,*,3], x, y, charsize=2
+    for i = 0, n-1 do shade_surf, data.d[*,*,i], x, y, charsize=2
     !p.multi=psaved
   endif else begin
     dx = data.x[1] - data.x[0]
