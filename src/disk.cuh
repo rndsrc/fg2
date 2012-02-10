@@ -30,14 +30,14 @@ __device__ __constant__ R para_M     = 1.0;       // mass of central black hole
 __device__ __constant__ R para_rS    = 2.0;       // Schwarzschild radius
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
-__device__ __constant__ R para_nus   = 2.0e-4;    // shear  viscosity
+__device__ __constant__ R para_nus   = 0.0;       // shear  viscosity
 __device__ __constant__ R para_nub   = 0.0;       // bulk   viscosity
-__device__ __constant__ R para_kappa = 5.0e-4;    // thermal conductivity
+__device__ __constant__ R para_kappa = 0.0;       // thermal conductivity
 __device__ __constant__ R para_alpha = 0.1;       // Shakura-Sunyaev alpha
 
-__device__ __constant__ R para_dd    = 0.0;       // simple density diffusion
-__device__ __constant__ R para_nu    = 0.0;       // simple viscosity
-__device__ __constant__ R para_ed    = 0.0;       // simple density diffusion
+__device__ __constant__ R para_dd    = 1.0e-4;    // simple density diffusion
+__device__ __constant__ R para_nu    = 2.0e-4;    // simple viscosity
+__device__ __constant__ R para_ed    = 5.0e-4;    // simple density diffusion
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
