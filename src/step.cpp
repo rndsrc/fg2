@@ -33,5 +33,9 @@ int step(const E t, const E dt) // 3rd-order ow-storage Runge-Kutta method
   }
   cudaThreadSynchronize();
 
+  int nan;
+  cudaMemcpyFromSymbol(&nan, "contain_nan", sizeof(int));
+  if(nan) return cudaErrorInvalidValue; // the error is "invalid argument"
+
   return (int)cudaGetLastError(); // cudaError_t is enum; cudaSuccess == 0
 }
