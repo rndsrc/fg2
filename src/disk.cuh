@@ -241,20 +241,17 @@ static S Hawley(R lnr, R theta)
   const R lK = sqrt(M * pow(r0, q1 - 1.0));
   const R K  = (g1 * e0) / pow(d0, g1);
 
-  R prof = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1)
+  R den = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1)
                       + M / r  - lK * lK / (pow(cyl_r, q1) * q1);
-  if(prof > 0.0) prof =  pow( prof * g1 / (Gamma * K), 1.0 / g1);
-  else           prof = -pow(-prof * g1 / (Gamma * K), 1.0 / g1);
+  if(den > 0.0) den =  pow( den * g1 / (Gamma * K), 1.0 / g1);
+  else          den = -pow(-den * g1 / (Gamma * K), 1.0 / g1);
 
-  R den, Omg, eng;
-  if(prof > bg) {
-    den = prof;
-    Omg = lK * pow(cyl_r, -q0);
-  } else {
-    den = bg;
-    Omg = 0.0;
+  R Omg = lK * pow(cyl_r, -q0);
+  if(den < bg) {
+    den  = bg;
+    Omg *= sin(theta) * sin(theta);
   }
-  eng =  K * pow(den, g1) / g1;
+  R eng =  K * pow(den, g1) / g1;
 
   return (S){log(den), 0.0, 0.0, Omg, log(eng)};
 }
