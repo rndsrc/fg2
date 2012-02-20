@@ -85,8 +85,6 @@ void drift(R *, const R *, R);
 #include "deriv.h"
 #endif
 
-#define  STR1NG1ZE(x) #x
-#define  STRINGIZE(x) STR1NG1ZE(x)
-#include STRINGIZE(EQNS)
+#include <eqns.cuh>
 
 #endif // FG2_H

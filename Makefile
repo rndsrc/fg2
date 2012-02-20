@@ -8,10 +8,10 @@ CFLAGS  = $(addprefix --compiler-options , -Wall) -O3
 help:
 	@echo 'The follow systems of equations are avilable:'
 	@echo
-	@c=0; for F in src/*.cuh; do  \
-	   f=$${F##src/};             \
-	   c=`expr $$c + 1`;          \
-	   echo "  $$c. $${f%%.cuh}"; \
+	@c=0; for F in src/*/; do  \
+	   f=$${F##src/};          \
+	   c=`expr $$c + 1`;       \
+	   echo "  $$c. $${f%%/}"; \
 	 done
 	@echo
 	@echo 'Use `make NAME` and `bin/NAME` to compile and run fg2.'
@@ -19,7 +19,7 @@ help:
 %:
 	@mkdir -p bin
 	@echo -n 'Compiling... '
-	@$(NVCC) src/*.{cu,cpp} $(CFLAGS) $(LDFLAGS) -DEQNS=$@.cuh -o bin/$@
+	@$(NVCC) src/*.{cu,cpp} -Isrc/$@ $(CFLAGS) $(LDFLAGS) -o bin/$@
 	@if [ -f bin/$@ ]; then            \
 	   echo 'DONE';                    \
 	   echo 'Use `bin/$@` to run fg2'; \
@@ -29,9 +29,9 @@ help:
 
 clean:
 	@echo -n 'Clean up... '
-	@for F in src/*.cuh; do   \
-	   f=$${F##src/};         \
-	   rm -f bin/$${f%%.cuh}; \
+	@for F in src/*/; do   \
+	   f=$${F##src/};      \
+	   rm -f bin/$${f%%/}; \
 	 done
 	@rm -f src/*~
 	@if [ -z "`ls bin 2>&1`" ]; then rmdir bin; fi
