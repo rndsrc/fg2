@@ -16,8 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#define BCOND_CU
 #include "fg2.h"
+#include <bcond.cuh>
 
 static void shuffle(R *x, R *y, const Z off, const Z h, const Z n)
 {

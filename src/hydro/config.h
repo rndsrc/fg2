@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2012 Chi-kwan Chan
+   Copyright (C) 2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,27 +16,20 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cstdlib>
-#include <cstring>
-#include <cmath>
-#include <cuda_runtime.h>
-#include "fg2.h"
-#include <init.h>
-
-void init(const char *name)
+static void config(void)
 {
-  S (*func)(R, R) = pick(name);
-
   using namespace global;
-  for(Z i = 0; i < n1; ++i) {
-    const R x = l1 * (i + 0.5) / n1;
-    for(Z j = 0; j < n2; ++j) {
-      const R y = l2 * (j + 0.5) / n2;
-      ((S *)host)[i * n2 + j] = func(x, y);
-    }
-  }
 
-  const Z hpitch = n2 * NVAR * sizeof(R); // no ghost zone in the output
-  const Z dpitch = s         * sizeof(R);
-  cudaMemcpy2D(u, dpitch, host, hpitch, hpitch, n1, cudaMemcpyHostToDevice);
+  // Compute floating point operation and bandwidth per step
+  const Z m1 = n1 + ORDER;
+  const Z m2 = n2 + ORDER;
+  flops = 3 * ((n1 * n2) * (289 + NVAR * 2.0)); // assume FMA
+  bps   = 3 * ((m1 * m2) * 1.0 +
+               (n1 * n2) * 5.0 +
+               (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
+
+  // Set device constant for kernels
+  const R Delta[] = {l1 / n1, l2 / n2};
+  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
+  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
 }

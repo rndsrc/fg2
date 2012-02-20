@@ -16,18 +16,9 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#define PARA_R0 K(3.0)
-
-struct state {
-  R lnd;         // ln(density)
-  R ur, uz, Omg; // cylindrical radial, vertical, and angular velocity
-  R lne;         // ln(specific_thermal_energy)
-};
-
-#ifdef KICK_CU ///////////////////////////////////////////////////////////////
-
 __device__ __constant__ R para_M     = 1.0;       // mass of central black hole
 __device__ __constant__ R para_rS    = 2.0;       // Schwarzschild radius
+__device__ __constant__ R para_rin   = 3.0;       // location of inner boundary
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
 __device__ __constant__ R para_nus   = 0.0;       // shear  viscosity
@@ -44,7 +35,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
   R sint, cost, r, nuSS;
 
-  const R sphr = PARA_R0 * exp((i + K(0.5)) * Delta1); // 4 FLOP
+  const R sphr = para_rin * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
   // Derivatives: 135 FLOP
   {
@@ -167,105 +158,3 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   return dt;
 }
-
-#elif defined(MAIN_CPP) //////////////////////////////////////////////////////
-
-static void config(void)
-{
-  using namespace global;
-
-  // Simulate the full pi wedge; make grid cells more-or-less square
-  l2 = M_PI;
-  const R hd2 = 0.5 * l2 / n2;
-  const R hd1 = log(hd2 + sqrt(hd2 * hd2 + 1.0));
-  l1 = 2.0 * hd1 * n1;
-
-  // Neumann and reflective boundary conditions
-  p1 = 0;
-  p2 = 0;
-
-  // Compute floating point operation and bandwidth per step
-  const Z m1 = n1 + ORDER;
-  const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (471 + NVAR * 2.0)); // assume FMA
-  bps   = 3 * ((m1 * m2) * 1.0 +
-               (n1 * n2) * 5.0 +
-               (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
-
-  // Set device constant for kernels
-  const R Delta[] = {l1 / n1, l2 / n2};
-  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
-  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
-}
-
-#elif defined(BCOND_CU) //////////////////////////////////////////////////////
-
-static __device__ R transform(R x)
-{
-  switch(threadIdx.x) {
-  case 0:         break;
-  case 1: x = -x; break; // ur = 0 at pole
-  case 2:         break;
-  case 3:         break;
-  }
-  return x;
-}
-
-#elif defined(INIT_CPP) //////////////////////////////////////////////////////
-
-static R M;
-static R rS;
-static R Gamma;
-
-static S ad_hoc(R lnr, R theta)
-{
-  const R r   = PARA_R0 * exp(lnr);
-  const R Omg = sin(theta) * sqrt(M / r) / r;
-
-  return (S){0.0, 0.0, 0.0, Omg, 0.0};
-}
-
-static S Hawley(R lnr, R theta)
-{
-  const R r     = PARA_R0 * exp(lnr);
-  const R cyl_r = r * sin(theta);
-
-  // Setup parameters
-  const R q0 =  2.0;
-  const R r0 = 16.0;
-  const R d0 =  1.0;
-  const R e0 =  0.01;
-  const R bg =  0.0001;
-
-  const R g1 = Gamma - 1.0;
-  const R q1 = 2.0 * q0 - 2.0;
-  const R lK = sqrt(M * pow(r0, q1 - 1.0));
-  const R K  = (g1 * e0) / pow(d0, g1);
-
-  R den = Gamma * e0 - M / r0 + lK * lK / (pow(r0,    q1) * q1)
-                      + M / r  - lK * lK / (pow(cyl_r, q1) * q1);
-  if(den > 0.0) den =  pow( den * g1 / (Gamma * K), 1.0 / g1);
-  else          den = -pow(-den * g1 / (Gamma * K), 1.0 / g1);
-
-  R Omg = lK * pow(cyl_r, -q0);
-  if(den < bg) {
-    den  = bg;
-    Omg *= sin(theta) * sin(theta);
-  }
-  R eng =  K * pow(den, g1) / g1;
-
-  return (S){log(den), 0.0, 0.0, Omg, log(eng)};
-}
-
-static S (*pick(const char *name))(R, R)
-{
-  cudaMemcpyFromSymbol(&M,     "para_M",     sizeof(R));
-  cudaMemcpyFromSymbol(&rS,    "para_rS",    sizeof(R));
-  cudaMemcpyFromSymbol(&Gamma, "para_gamma", sizeof(R));
-
-  if(!strcmp(name, "Hawley")) return Hawley; // hydrostatic Hawley (2000) torus
-
-  return ad_hoc; // default
-}
-
-#endif ///////////////////////////////////////////////////////////////////////

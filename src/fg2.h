@@ -81,10 +81,6 @@ void bcond(R *, int, int);
 void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
 
-#ifdef KICK_CU
-#include "deriv.h"
-#endif
-
-#include <eqns.cuh>
+#include <state.h>
 
 #endif // FG2_H
