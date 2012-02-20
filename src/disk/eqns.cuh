@@ -78,11 +78,10 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= ur * dr.lne + uz * dz.lne;
   }
 
-  // Compressible/pressure effects: 28 FLOP
+  // Compressible/pressure effects: 16 FLOP
   {
     const R gamma1 = para_gamma - K(1.0);
-    const R eng    = exp(u->lne);
-    const R temp   = gamma1 * eng;
+    const R temp   = gamma1 * exp(u->lne);
     const R ur_r   = u->ur / r;
     const R div_u  = dr.ur + dz.uz + ur_r;
 
@@ -90,17 +89,6 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.ur  -= temp * (dr.lnd + dr.lne);
     dt.uz  -= temp * (dz.lnd + dz.lne);
     dt.lne -= div_u * gamma1;
-
-
-  // Radiation heating or cooling
-
-    const R den     = exp(u->lnd );
-    const R rad     = exp(u->lner);
-    const R temp2   = temp * temp;
-    const R heating = para_icool * (rad - para_ar * temp2 * temp2 / den);
-
-    dt.lne  += heating / eng;
-    dt.lner -= heating / rad;
 
 
   // Total shear viscosity = molecular + Shakura-Sunyaev: 6 FLOP
@@ -165,6 +153,24 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lnd  += para_dd * (D11(lnd ) + D22(lnd ) + d_lnd_2  * sphr_2);
     dt.lne  +=      ed * (D11(lne ) + D22(lne ) + d_lne_2  * sphr_2);
     dt.lner += para_rd * (D11(lner) + D22(lner) + d_lner_2 * sphr_2);
+  }
+
+  // Radiation force and heating or cooling: (23 FLOP)
+  {
+    const R den     = exp(u->lnd );
+    const R eng     = exp(u->lne );
+    const R rad     = exp(u->lner);
+
+    const R lambda  = K(1.0) / K(3.0); // flux limiter in diffusion regime
+
+    const R temp    = (para_gamma - K(1.0)) * eng;
+    const R temp2   = temp * temp;
+    const R heating = para_icool * (rad - para_ar * temp2 * temp2 / den);
+
+    dt.ur   -= lambda * rad * (dr.lnd + dr.lne);
+    dt.uz   -= lambda * rad * (dz.lnd + dz.lne);
+    dt.lne  += heating / eng;
+    dt.lner -= heating / rad;
   }
 
   // External force: 7 FLOP
