@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2011,2012 Chi-kwan Chan
+   Copyright (C) 2011,2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,8 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#define BCOND_CU
 #include "fg2.h"
+#include <bcond.cuh>
 
 static void shuffle(R *x, R *y, const Z off, const Z h, const Z n)
 {

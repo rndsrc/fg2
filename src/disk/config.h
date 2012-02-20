@@ -1,5 +1,5 @@
-/* Copyright (C) 2011,2012 Chi-kwan Chan
-   Copyright (C) 2011,2012 NORDITA
+/* Copyright (C) 2012 Chi-kwan Chan
+   Copyright (C) 2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,14 +16,19 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cstdlib>
-#include "fg2.h"
+static const int eqns_flop = 471;
 
-E getdt(void)
+static void settings(void)
 {
   using namespace global;
 
-  return (E)c / (n1 / l1 + n2 / l2); // TODO: obtain max(u), which we
-                                     //       assume ~ 1 now, from the
-                                     //       simulation.
+  // Simulate the full pi wedge; make grid cells more-or-less square
+  l2 = M_PI;
+  const R hd2 = 0.5 * l2 / n2;
+  const R hd1 = log(hd2 + sqrt(hd2 * hd2 + 1.0));
+  l1 = 2.0 * hd1 * n1;
+
+  // Neumann and reflective boundary conditions
+  p1 = 0;
+  p2 = 0;
 }

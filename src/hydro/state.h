@@ -1,5 +1,5 @@
-/* Copyright (C) 2011,2012 Chi-kwan Chan
-   Copyright (C) 2011,2012 NORDITA
+/* Copyright (C) 2012 Chi-kwan Chan
+   Copyright (C) 2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,14 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <cstdlib>
-#include "fg2.h"
-
-E getdt(void)
-{
-  using namespace global;
-
-  return (E)c / (n1 / l1 + n2 / l2); // TODO: obtain max(u), which we
-                                     //       assume ~ 1 now, from the
-                                     //       simulation.
-}
+struct state {
+  R lnd;    // ln(density)
+  R u1, u2; // velocity
+  R lne;    // ln(specific_thermal_energy)
+};

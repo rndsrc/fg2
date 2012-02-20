@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2011,2012 Chi-kwan Chan
+   Copyright (C) 2011,2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,10 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#define MAIN_CPP
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <cuda_runtime.h>
 #include "fg2.h"
 

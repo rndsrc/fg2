@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2012 Chi-kwan Chan
+   Copyright (C) 2012 NORDITA
 
    This file is part of fg2.
 
@@ -15,14 +15,6 @@
 
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
-
-struct state {
-  R lnd;    // ln(density)
-  R u1, u2; // velocity
-  R lne;    // ln(specific_thermal_energy)
-};
-
-#ifdef KICK_CU ///////////////////////////////////////////////////////////////
 
 __device__ __constant__ R para_gamma = 5.0 / 3.0; // ratio of specific heats
 __device__ __constant__ R para_nus   = 2.0e-4;    // shear viscosity
@@ -98,123 +90,3 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   return dt;
 }
-
-#elif defined(MAIN_CPP) //////////////////////////////////////////////////////
-
-static void config(void)
-{
-  using namespace global;
-
-  // Compute floating point operation and bandwidth per step
-  const Z m1 = n1 + ORDER;
-  const Z m2 = n2 + ORDER;
-  flops = 3 * ((n1 * n2) * (289 + NVAR * 2.0)); // assume FMA
-  bps   = 3 * ((m1 * m2) * 1.0 +
-               (n1 * n2) * 5.0 +
-               (m1 + m2) * 2.0 * ORDER) * NVAR * sizeof(R) * 8;
-
-  // Set device constant for kernels
-  const R Delta[] = {l1 / n1, l2 / n2};
-  cudaMemcpyToSymbol("Delta1", Delta+0, sizeof(R));
-  cudaMemcpyToSymbol("Delta2", Delta+1, sizeof(R));
-}
-
-#elif defined(BCOND_CU) //////////////////////////////////////////////////////
-
-static __device__ R transform(R x)
-{
-  switch(threadIdx.x) {
-  case 0:         break;
-  case 1:         break;
-  case 2: x = -x; break; // u2 = 0 boundary
-  case 3:         break;
-  }
-  return x;
-}
-
-#elif defined(INIT_CPP) //////////////////////////////////////////////////////
-
-static R poly_gamma;
-
-static R Fermi_Dirac(R x, R d)
-{
-  return 1.0 / (exp(x / d) + 1.0);
-}
-
-static S blast(R x, R y)
-{
-  x -= 0.5 * global::l1;
-  y -= 0.5 * global::l2;
-
-  R e = ((x * x + y * y < 0.01) ? 1.0 : 0.01) / (poly_gamma - 1.0);
-
-  return (S){0.0, 0.0, 0.0, log(e)};
-}
-
-static S bow(R x, R y) // need to turn on density diffusion
-{
-  x -= 0.5 * global::l1;
-  y -= 0.5 * global::l2;
-
-  R r = sqrt(x * x + y * y);
-  R d = 9.9 * Fermi_Dirac(r - 0.01, 0.001) + 0.1;
-  R u = (10.0 / d - 1.0) / 99.0;
-  R e = 0.01 / d / (poly_gamma - 1.0);
-
-  return (S){log(d), u, 0.0, log(e)};
-}
-
-static S KH(R x, R y)
-{
-  x -= 0.5 * global::l1;
-  y -= 0.5 * global::l2;
-
-  R d, u;
-  if(fabs(y) < 0.25) {
-    d =  2.0;
-    u =  0.5 + 0.01 * rand() / RAND_MAX - 0.005;
-  } else {
-    d =  1.0;
-    u = -0.5 + 0.01 * rand() / RAND_MAX - 0.005;
-  }
-  R e = 2.5 / d / (poly_gamma - 1.0);
-
-  return (S){log(d), u, 0.0, log(e)};
-}
-
-static S Sod(R x, R y)
-{
-  x -= 0.5 * global::l1;
-  y -= 0.5 * global::l2;
-
-  R d, P;
-  if(fmod(x - 2 * y + K(1.5), K(1.0)) < 0.5) {
-    d = 1.0;
-    P = 1.0;
-  } else {
-    d = 0.125;
-    P = 0.1;
-  }
-  R e = P / d / (poly_gamma - 1.0);
-
-  return (S){log(d), 0.0, 0.0, log(e)};
-}
-
-static S zeros(R x, R y)
-{
-  return (S){0.0, 0.0, 0.0, 0.0};
-}
-
-static S (*pick(const char *name))(R, R)
-{
-  cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
-
-  if(!strcmp(name, "blast")) return blast; // Gaussian blast wave
-  if(!strcmp(name, "bow"  )) return bow;   // Bow shock
-  if(!strcmp(name, "KH"   )) return KH;    // Kelvin-Helmholtz instability
-  if(!strcmp(name, "Sod"  )) return Sod;   // Sod shock tube
-
-  return zeros; // default
-}
-
-#endif ///////////////////////////////////////////////////////////////////////

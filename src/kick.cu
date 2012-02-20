@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2011,2012 Chi-kwan Chan
+   Copyright (C) 2011,2012 NORDITA
 
    This file is part of fg2.
 
@@ -16,8 +16,9 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-#define KICK_CU
 #include "fg2.h"
+#include "deriv.h"
+#include <eqns.cuh>
 
 static __device__ void copy(R *dst, const R *src, const Z n)
 {
