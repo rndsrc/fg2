@@ -33,6 +33,6 @@ clean:
 	   f=$${F##src/};      \
 	   rm -f bin/$${f%%/}; \
 	 done
-	@rm -f src/*~
+	@rm -f src/*~ src/*/*~
 	@if [ -z "`ls bin 2>&1`" ]; then rmdir bin; fi
 	@echo 'DONE'

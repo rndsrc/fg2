@@ -72,10 +72,11 @@ E    load(const char *);
 void dump(const char *, E);
 
 const char *para(const char *);
-Z   setup(Z, Z);
-int solve(E, E, Z, Z);
-E   getdt(void);
-int step (E, E);
+Z    setup (Z, Z);
+void config(void);
+int  solve (E, E, Z, Z);
+E    getdt (void);
+int  step  (E, E);
 
 void bcond(R *, int, int);
 void kick (R *, const R *, R, R);

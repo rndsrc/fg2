@@ -18,10 +18,8 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <cuda_runtime.h>
 #include "fg2.h"
-#include <config.h>
 
 #define NOVAL (i+1 == argc) || (argv[i+1][0] == '-')
 #define BREAK if(NOVAL) break
