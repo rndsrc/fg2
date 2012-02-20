@@ -27,10 +27,12 @@ __device__ __constant__ R para_kappa = 0.0;       // thermal conductivity
 __device__ __constant__ R para_alpha = 0.01;      // Shakura-Sunyaev alpha
 
 __device__ __constant__ R para_ar    = 1.0e+8;    // radiation density constant
+__device__ __constant__ R para_icool = 1.0;       // inverse cooling timescale
 
 __device__ __constant__ R para_dd    = 1.0e-4;    // simple density diffusion
 __device__ __constant__ R para_nu    = 2.0e-4;    // simple viscosity
-__device__ __constant__ R para_ed    = 5.0e-4;    // simple density diffusion
+__device__ __constant__ R para_ed    = 5.0e-4;    // simple energy diffusion
+__device__ __constant__ R para_rd    = 5.0e-4;    // simple radiation diffusion
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
@@ -39,26 +41,28 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   const R sphr = para_rin * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
-  // Derivatives: 135 FLOP
+  // Derivatives: 161 FLOP
   {
-    const S d1 = {D1(lnd), D1(ur), D1(uz), D1(Omg), D1(lne)};
-    const S d2 = {D2(lnd), D2(ur), D2(uz), D2(Omg), D2(lne)};
+    const S d1 = {D1(lnd), D1(ur), D1(uz), D1(Omg), D1(lne), D1(lner)};
+    const S d2 = {D2(lnd), D2(ur), D2(uz), D2(Omg), D2(lne), D2(lner)};
 
     const R theta = (j + K(0.5)) * Delta2 ;
     sincos(theta, &sint, &cost);
     r = sphr * sint;
 
-    dr.lnd = (sint * d1.lnd + cost * d2.lnd) / sphr;
-    dr.ur  = (sint * d1.ur  + cost * d2.ur ) / sphr;
-    dr.uz  = (sint * d1.uz  + cost * d2.uz ) / sphr;
-    dr.Omg = (sint * d1.Omg + cost * d2.Omg) / sphr;
-    dr.lne = (sint * d1.lne + cost * d2.lne) / sphr;
+    dr.lnd  = (sint * d1.lnd  + cost * d2.lnd ) / sphr;
+    dr.ur   = (sint * d1.ur   + cost * d2.ur  ) / sphr;
+    dr.uz   = (sint * d1.uz   + cost * d2.uz  ) / sphr;
+    dr.Omg  = (sint * d1.Omg  + cost * d2.Omg ) / sphr;
+    dr.lne  = (sint * d1.lne  + cost * d2.lne ) / sphr;
+    dr.lner = (sint * d1.lner + cost * d2.lner) / sphr;
 
-    dz.lnd = (cost * d1.lnd - sint * d2.lnd) / sphr;
-    dz.ur  = (cost * d1.ur  - sint * d2.ur ) / sphr;
-    dz.uz  = (cost * d1.uz  - sint * d2.uz ) / sphr;
-    dz.Omg = (cost * d1.Omg - sint * d2.Omg) / sphr;
-    dz.lne = (cost * d1.lne - sint * d2.lne) / sphr;
+    dz.lnd  = (cost * d1.lnd  - sint * d2.lnd ) / sphr;
+    dz.ur   = (cost * d1.ur   - sint * d2.ur  ) / sphr;
+    dz.uz   = (cost * d1.uz   - sint * d2.uz  ) / sphr;
+    dz.Omg  = (cost * d1.Omg  - sint * d2.Omg ) / sphr;
+    dz.lne  = (cost * d1.lne  - sint * d2.lne ) / sphr;
+    dz.lner = (cost * d1.lner - sint * d2.lner) / sphr;
   }
 
   // Advection and pseudo-force: 27 FLOP
@@ -74,10 +78,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lne -= ur * dr.lne + uz * dz.lne;
   }
 
-  // Compressible/pressure effects: 16 FLOP
+  // Compressible/pressure effects: 28 FLOP
   {
     const R gamma1 = para_gamma - K(1.0);
-    const R temp   = gamma1 * exp(u->lne);
+    const R eng    = exp(u->lne);
+    const R temp   = gamma1 * eng;
     const R ur_r   = u->ur / r;
     const R div_u  = dr.ur + dz.uz + ur_r;
 
@@ -85,6 +90,17 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.ur  -= temp * (dr.lnd + dr.lne);
     dt.uz  -= temp * (dz.lnd + dz.lne);
     dt.lne -= div_u * gamma1;
+
+
+  // Radiation heating or cooling
+
+    const R den     = exp(u->lnd );
+    const R rad     = exp(u->lner);
+    const R temp2   = temp * temp;
+    const R heating = para_icool * (rad - para_ar * temp2 * temp2 / den);
+
+    dt.lne  += heating / eng;
+    dt.lner -= heating / rad;
 
 
   // Total shear viscosity = molecular + Shakura-Sunyaev: 6 FLOP
@@ -137,16 +153,18 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
-  // Density diffusion and thermal conductivity: 71 FLOP
+  // Density diffusion and thermal conductivity: 103 FLOP
   {
-    const R sphr_2  = sphr * sphr;
-    const R d_lnd_2 = dr.lnd * dr.lnd + dz.lnd * dz.lnd;
-    const R d_lne_2 = dr.lne * dr.lne + dz.lne * dz.lne;
-    const R ed      = para_ed +
+    const R sphr_2   = sphr * sphr;
+    const R d_lnd_2  = dr.lnd  * dr.lnd  + dz.lnd  * dz.lnd;
+    const R d_lne_2  = dr.lne  * dr.lne  + dz.lne  * dz.lne;
+    const R d_lner_2 = dr.lner * dr.lner + dz.lner * dz.lner;
+    const R ed       = para_ed +
       (para_kappa * (para_gamma - K(1.0)) + para_gamma * nuSS) / sphr_2;
 
-    dt.lnd += para_dd * (D11(lnd) + D22(lnd) + d_lnd_2 * sphr_2);
-    dt.lne +=      ed * (D11(lne) + D22(lne) + d_lne_2 * sphr_2);
+    dt.lnd  += para_dd * (D11(lnd ) + D22(lnd ) + d_lnd_2  * sphr_2);
+    dt.lne  +=      ed * (D11(lne ) + D22(lne ) + d_lne_2  * sphr_2);
+    dt.lner += para_rd * (D11(lner) + D22(lner) + d_lner_2 * sphr_2);
   }
 
   // External force: 7 FLOP

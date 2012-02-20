@@ -16,7 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-static const int eqns_flop = 471;
+static const int eqns_flop = 541;
 
 static void settings(void)
 {
