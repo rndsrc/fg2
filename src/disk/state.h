@@ -19,5 +19,5 @@
 struct state {
   R lnd;         // ln(density)
   R ur, uz, Omg; // cylindrical radial, vertical, and angular velocity
-  R lne;         // ln(specific_thermal_energy)
+  R lne, lner;   // ln(specific_thermal_energy), ln(specific_radiative_energy)
 };

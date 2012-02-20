@@ -20,14 +20,7 @@ static R M;
 static R rS;
 static R rin;
 static R Gamma;
-
-static S ad_hoc(R lnr, R theta)
-{
-  const R r   = rin * exp(lnr);
-  const R Omg = sin(theta) * sqrt(M / r) / r;
-
-  return (S){0.0, 0.0, 0.0, Omg, 0.0};
-}
+static R ar;
 
 static S Hawley(R lnr, R theta)
 {
@@ -56,9 +49,11 @@ static S Hawley(R lnr, R theta)
     den  = bg;
     Omg *= sin(theta) * sin(theta);
   }
-  R eng =  K * pow(den, g1) / g1;
+  R eng = K * pow(den, g1) / g1;
+  R tbg = K * pow(bg,  g1);
+  R rad = ar * tbg * tbg * tbg * tbg / bg;
 
-  return (S){log(den), 0.0, 0.0, Omg, log(eng)};
+  return (S){log(den), 0.0, 0.0, Omg, log(eng), log(rad)};
 }
 
 static S (*pick(const char *name))(R, R)
@@ -67,8 +62,7 @@ static S (*pick(const char *name))(R, R)
   cudaMemcpyFromSymbol(&rS,    "para_rS",    sizeof(R));
   cudaMemcpyFromSymbol(&rin,   "para_rin",   sizeof(R));
   cudaMemcpyFromSymbol(&Gamma, "para_gamma", sizeof(R));
+  cudaMemcpyFromSymbol(&ar,    "para_ar",    sizeof(R));
 
-  if(!strcmp(name, "Hawley")) return Hawley; // hydrostatic Hawley (2000) torus
-
-  return ad_hoc; // default
+  return Hawley; // hydrostatic Hawley (2000) torus
 }
