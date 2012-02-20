@@ -1,5 +1,5 @@
-/* Copyright (C) 2011 Chi-kwan Chan
-   Copyright (C) 2011 NORDITA
+/* Copyright (C) 2011,2012 Chi-kwan Chan
+   Copyright (C) 2011,2012 NORDITA
 
    This file is part of fg2.
 
