@@ -39,12 +39,15 @@ Z setup(const Z n1, const Z n2)
   // Grid and block sizes for rolling cache kernel
   Z d; cudaGetDevice(&d);
   cudaDeviceProp dev; cudaGetDeviceProperties(&dev, d);
+  Z w = dev.multiProcessorCount;
+  for(Z i = 2; dev.multiProcessorCount % i == 0; i *= 2) w /= 2;
   for(Z h = 0, i = 1; ; ++i) {
     Z g = NVAR * sizeof(R) * (ORDER + i);
     Z j = (dev.sharedMemPerBlock - SYS) / g - ORDER;
     if(i * j > dev.regsPerBlock / REG) j = dev.regsPerBlock / (REG * i);
     if(i * j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock / i;
     j = (j / dev.warpSize) * dev.warpSize; // multiple of warp size
+    while(j && (n2 - 1) / j + 1 < w) j = (j / dev.warpSize - 1) * dev.warpSize;
     if(i * j <= h) break; // if new block size use less threads, break
     h = i * j;
     global::b1 = i;
