@@ -37,7 +37,7 @@ __device__ __constant__ R para_rd    = 5.0e-4;    // simple radiation diffusion
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
-  R sint, cost, r, nuSS;
+  R sint, cost, r, nuSS, bigR;
 
   const R sphr = para_rin * exp((i + K(0.5)) * Delta1); // 4 FLOP
 
@@ -142,12 +142,14 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
-  // Density diffusion and thermal conductivity: 114 FLOP
+  // Density diffusion and thermal conductivity: 115 FLOP
   {
     const R d_lnd_2      = dr.lnd  * dr.lnd  + dz.lnd  * dz.lnd;
     const R d_lne_2      = dr.lne  * dr.lne  + dz.lne  * dz.lne;
     const R d_lner_2     = dr.lner * dr.lner + dz.lner * dz.lner;
     const R d_lnd_d_lner = dr.lnd  * dr.lner + dz.lnd  * dz.lner;
+
+    bigR = sqrt(d_lner_2);
 
     const R sphr_2    = sphr * sphr;
     const R lap_d_d   = (D11(lnd ) + D22(lnd )) / sphr_2 + d_lnd_2;
@@ -163,20 +165,20 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
            (K(2.0) * d_lnd_d_lner + lap_d_d) * rd;
   }
 
-  // Radiation force and heating or cooling: (23 FLOP)
+  // Radiation force and heating or cooling: (27 FLOP)
   {
     const R den     = exp(u->lnd );
     const R eng     = exp(u->lne );
     const R rad     = exp(u->lner);
 
-    const R lambda  = K(1.0) / K(3.0); // flux limiter in diffusion regime
+    const R Lambda  = (K(2.0) + bigR) / (K(6.0) + (K(3.0) + bigR) * bigR);
 
     const R temp    = (para_gamma - K(1.0)) * eng;
     const R temp2   = temp * temp;
     const R heating = para_icool * (rad - para_ar * temp2 * temp2 / den);
 
-    dt.ur   -= lambda * rad * (dr.lnd + dr.lne);
-    dt.uz   -= lambda * rad * (dz.lnd + dz.lne);
+    dt.ur   -= Lambda * rad * (dr.lnd + dr.lne);
+    dt.uz   -= Lambda * rad * (dz.lnd + dz.lne);
     dt.lne  += heating / eng;
     dt.lner -= heating / rad;
   }
