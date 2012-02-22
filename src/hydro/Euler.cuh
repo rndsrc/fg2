@@ -16,7 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-static __device__ void first_order(S *u, const R dt)
+static __device__ void first_order(S *u, const R dt, const Z i, const Z j)
 {
   // Do nothing
 }
