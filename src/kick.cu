@@ -91,3 +91,21 @@ void kick(R *v, const R *x, const R t, const R b)
   const dim3 Bsz(b2, b1);
   kernel<<<Gsz, Bsz, sz>>>(v, x, t, b, n1, n2, s);
 }
+
+// CUDA cannot really understand constant device variables across many
+// files.  Therefore we are forced to put the Euler kernel here.
+
+#include "Euler.cuh"
+
+static __global__ void kernel(R *u, const R dt, const Z n, const Z s)
+{
+  const Z j = blockIdx.x * blockDim.x + threadIdx.x;
+  if(j < n) first_order((S *)(u + blockIdx.y * s + j * NVAR), dt);
+}
+
+void Euler(R *x, const R dt)
+{
+  using namespace global;
+  const dim3 Gsz((n2 - 1) / BSZ + 1, n1);
+  kernel<<<Gsz, BSZ>>>(x, dt, n2, s);
+}
