@@ -1,5 +1,5 @@
-;; Copyright (C) 2011 Chi-kwan Chan
-;; Copyright (C) 2011 NORDITA
+;; Copyright (C) 2011,2012 Chi-kwan Chan
+;; Copyright (C) 2011,2012 NORDITA
 ;;
 ;; This file is part of fg2.
 ;;
@@ -16,9 +16,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with fg2.  If not, see <http://www.gnu.org/licenses/>.
 
-function load, name, rtheta=rtheta
-
-  if not keyword_set(rtheta) then rtheta = 0
+function load, name
 
   openr, lun, name, /get_lun
   size = lonarr(6)
