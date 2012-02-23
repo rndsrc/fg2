@@ -25,9 +25,11 @@ int step(const E t, const E dt) // 3rd-order ow-storage Runge-Kutta method
   const E beta [] = {0.0, -5.0/9.0, -153.0/128.0};
   const E gamma[] = {1.0/3.0, 15.0/16.0, 8.0/15.0};
 
+  Euler(global::u, dt); // point-wise forward Euler update, doesn't need bcond
+
   for(Z i = 0; i < 3; ++i) {
     using namespace global;
-    bcond(u, p1, p2); // apply periodic boundary condition
+    bcond(u, p1, p2);                        // apply boundary condition
     kick (v, u, t + dt * alpha[i], beta[i]); // v <- F(u, T) + beta[i] * v
     drift(u, v,     dt * gamma[i]         ); // u <- u + dt * gamma[i] * v
   }

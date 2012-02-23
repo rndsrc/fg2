@@ -20,10 +20,9 @@ static __device__ R transform(R x)
 {
   switch(threadIdx.x) {
   case 0:         break;
-  case 1: x = -x; break; // ur = 0 at pole
-  case 2:         break;
+  case 1:         break;
+  case 2: x = -x; break; // u2 = 0 boundary
   case 3:         break;
-  case 4:         break;
   }
   return x;
 }

@@ -16,14 +16,12 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
-static __device__ R transform(R x)
+static S zeros(R x, R y)
 {
-  switch(threadIdx.x) {
-  case 0:         break;
-  case 1: x = -x; break; // ur = 0 at pole
-  case 2:         break;
-  case 3:         break;
-  case 4:         break;
-  }
-  return x;
+  return (S){0.0, 0.0, 0.0};
+}
+
+static S (*pick(const char *name))(R, R)
+{
+  return zeros; // default
 }
