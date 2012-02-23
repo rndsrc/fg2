@@ -54,8 +54,8 @@ pro vis, i, vorticity=vorticity, rtheta=rtheta, all=all, png=png
       if keyword_set(vorticity) then begin
         u1 = fft(data.d[*,*,1])
         u2 = fft(data.d[*,*,2])
-        k  = getk(u1, /zeronyquist)
-        w  = complex(0, k.k1) * u2 - complex(0, k.k2) * u1
+        j  = getk(u1, /zeronyquist)
+        w  = complex(0, j.k1) * u2 - complex(0, j.k2) * u1
         d  = real_part(fft(w, /inverse))
       endif else d = data.d[*,*,0]
       tvscl, congrid(d, 1024, 1024)
@@ -63,7 +63,7 @@ pro vis, i, vorticity=vorticity, rtheta=rtheta, all=all, png=png
   endelse
 
   if keyword_set(png) then begin
-    write_png, string(i, format='(i04)') + '.png', tvrd(/true)
+    write_png, name + '.png', tvrd(/true)
     set_plot, dsaved
   endif
 
