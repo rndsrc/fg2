@@ -16,7 +16,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with fg2.  If not, see <http://www.gnu.org/licenses/>.
 
-function getk, f
+function getk, f, zeronyquist=zeronyquist
 
   n  = size(f, /dimensions)
   n1 = n[0]
@@ -24,6 +24,11 @@ function getk, f
 
   k1 = [findgen(n1-n1/2), -reverse(findgen(n1/2)+1)]
   k2 = [findgen(n2-n2/2), -reverse(findgen(n2/2)+1)]
+  if keyword_set(zeroNyquist) then begin
+    if n1 mod 2 eq 0 then k1[n1/2] = 0
+    if n2 mod 2 eq 0 then k2[n2/2] = 0
+  endif
+
   return, {k1:rebin(k1,n1,n2), k2:rebin(transpose(k2),n1,n2)}
 
 end

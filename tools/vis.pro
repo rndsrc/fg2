@@ -16,22 +16,18 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with fg2.  If not, see <http://www.gnu.org/licenses/>.
 
-pro vis, i, rtheta=rtheta, all=all, png=png
+pro vis, i, vorticity=vorticity, rtheta=rtheta, all=all, png=png
 
-  if not keyword_set(rtheta) then rtheta = 0
-  if not keyword_set(all)    then all    = 0
-  if not keyword_set(png)    then png    = 0
-
-  if rtheta and all then begin
+  if keyword_set(rtheta) and keyword_set(all) then begin
     print, '/rtheta and /all are incompatible; choose only one of them'
     return
   endif
 
-  name = string(i, format='(i04)') + '.raw'
-  data = load(name)
-  print, 'Loaded "' + name + '"'
+  name = string(i, format='(i04)')
+  print, 'Loading "' + name + '.raw"'
+  data = load(name + '.raw')
 
-  if png then begin
+  if keyword_set(png) then begin
     dsaved = !d.name
     set_plot, 'z'
     device, decompose=0, set_resolution=[1024, 1024], set_pixel_depth=24
@@ -40,7 +36,7 @@ pro vis, i, rtheta=rtheta, all=all, png=png
     device, decompose=0
   endif
 
-  if all then begin
+  if keyword_set(all) then begin
     n = size(data.d) & n = n[3]
     psaved=!p.multi
     if n gt 1 then !p.multi=[0,2,(n-1)/2+1]
@@ -50,16 +46,23 @@ pro vis, i, rtheta=rtheta, all=all, png=png
     !p.multi=psaved
   endif else begin
     dx = data.x[1] - data.x[0]
-    if rtheta then begin
+    if keyword_set(rtheta) then begin
       d = sp2c(data.d[*,*,0], size=1024)
       tvscl, reverse(d)
       tvscl, d, 1
     endif else begin
-      tvscl, congrid(data.d[*,*,0], 1024, 1024)
+      if keyword_set(vorticity) then begin
+        u1 = fft(data.d[*,*,1])
+        u2 = fft(data.d[*,*,2])
+        k  = getk(u1, /zeronyquist)
+        w  = complex(0, k.k1) * u2 - complex(0, k.k2) * u1
+        d  = real_part(fft(w, /inverse))
+      endif else d = data.d[*,*,0]
+      tvscl, congrid(d, 1024, 1024)
     endelse
   endelse
 
-  if png then begin
+  if keyword_set(png) then begin
     write_png, string(i, format='(i04)') + '.png', tvrd(/true)
     set_plot, dsaved
   endif
