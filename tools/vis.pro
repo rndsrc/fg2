@@ -1,5 +1,5 @@
-;; Copyright (C) 2011 Chi-kwan Chan
-;; Copyright (C) 2011 NORDITA
+;; Copyright (C) 2011,2012 Chi-kwan Chan
+;; Copyright (C) 2011,2012 NORDITA
 ;;
 ;; This file is part of fg2.
 ;;
@@ -28,7 +28,7 @@ pro vis, i, rtheta=rtheta, all=all, png=png
   endif
 
   name = string(i, format='(i04)') + '.raw'
-  data = load(name, rtheta=rtheta)
+  data = load(name)
   print, 'Loaded "' + name + '"'
 
   if png then begin
