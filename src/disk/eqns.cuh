@@ -39,17 +39,17 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-  R sint, cost, r, bigR, nuSS;
+  R sint, cost, r, nuSS;
 
-  // Useful variables: 31 FLOP
+  // Useful variables: 10 FLOP
 
   const R sphr   = para_rin * exp((i + K(0.5)) * Delta1);
+  const R sphr_2 = sphr * sphr;
   const R den    = exp(u->lnd );
   const R eng    = exp(u->lne );
   const R rad    = exp(u->lner);
   const R gamma1 = para_gamma - K(1.0);
   const R temp   = gamma1 * eng;
-  const R icool  = (para_es + para_ff * den * pow(temp, K(-3.5))) * den;
 
 
   // Derivatives: 161 FLOP
@@ -149,39 +149,37 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.uz += mixed * (drz_ur + dzz_uz +  dz.ur              / r);
   }
 
-  // Density diffusion and thermal conductivity: 113 FLOP
+  // Density diffusion and thermal conductivity: 70 FLOP
   {
-    const R d_lnd_2      = dr.lnd  * dr.lnd  + dz.lnd  * dz.lnd;
-    const R d_lne_2      = dr.lne  * dr.lne  + dz.lne  * dz.lne;
+    const R d_lnd_2 = dr.lnd * dr.lnd + dz.lnd * dz.lnd;
+    const R d_lne_2 = dr.lne * dr.lne + dz.lne * dz.lne;
+    const R lap_d_d = (D11(lnd) + D22(lnd)) / sphr_2 + d_lnd_2;
+    const R lap_e_e = (D11(lne) + D22(lne)) / sphr_2 + d_lne_2;
+
+    dt.lnd += lap_d_d * (para_dd * sphr_2);
+    dt.lne += lap_e_e * (para_ed * sphr_2 + para_kappa * gamma1 +
+                                            para_gamma * nuSS  );
+
+
+  // Radiation force, heating/cooling, and diffusion: 71 FLOP
+
     const R d_lner_2     = dr.lner * dr.lner + dz.lner * dz.lner;
     const R d_lnd_d_lner = dr.lnd  * dr.lner + dz.lnd  * dz.lner;
+    const R lap_er_er    = (D11(lner) + D22(lner)) / sphr_2 + d_lner_2;
 
-    const R sphr_2    = sphr * sphr;
-    const R lap_d_d   = (D11(lnd ) + D22(lnd )) / sphr_2 + d_lnd_2;
-    const R lap_e_e   = (D11(lne ) + D22(lne )) / sphr_2 + d_lne_2;
-    const R lap_er_er = (D11(lner) + D22(lner)) / sphr_2 + d_lner_2;
+    const R bigR   = sqrt(d_lner_2);
+    const R Lambda = (K(2.0) + bigR) / (K(6.0) + (K(3.0) + bigR) * bigR);
 
-    const R ed = para_kappa * gamma1 + para_gamma * nuSS;
-    const R rd = 0.0; // K(1.0) / K(3.0) / icool;
+    dt.ur -= Lambda * rad * (dr.lnd + dr.lne);
+    dt.uz -= Lambda * rad * (dz.lnd + dz.lne);
 
-    dt.lnd  += lap_d_d   * (para_dd * sphr_2);
-    dt.lne  += lap_e_e   * (para_ed * sphr_2 + ed);
-    dt.lner += lap_er_er * (para_rd * sphr_2 + rd) +
-           (K(2.0) * d_lnd_d_lner + lap_d_d) * rd;
-
-    bigR = sqrt(d_lner_2);
-  }
-
-  // Radiation force and heating or cooling: 22 FLOP
-  {
-    const R Lambda  = (K(2.0) + bigR) / (K(6.0) + (K(3.0) + bigR) * bigR);
+    const R icool   = (para_es + para_ff * den * pow(temp, K(-3.5))) * den;
     const R temp2   = temp * temp;
     const R cooling = icool * (para_ar * temp2 * temp2 / den - rad);
 
-    dt.ur   -= Lambda * rad * (dr.lnd + dr.lne);
-    dt.uz   -= Lambda * rad * (dz.lnd + dz.lne);
     dt.lne  -= cooling / eng;
-    dt.lner += cooling / rad;
+    dt.lner += cooling / rad + para_rd * lap_er_er * sphr_2 +
+      (Lambda / icool) * (lap_d_d + K(2.0) * d_lnd_d_lner + lap_er_er);
   }
 
   // External force: 7 FLOP
