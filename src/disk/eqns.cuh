@@ -38,11 +38,14 @@ __device__ __constant__ R para_rd    = 5.0e-4;    // simple radiation diffusion
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   S lap, dr, dz, dt = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  R sint, cost, drr_ur, drz_ur, drz_uz, dzz_uz;
+
+  R drr_lnd, drr_ur, drr_lner;
+  R drz_lnd, drz_ur, drz_uz, drz_lner;
+  R dzz_lnd, dzz_uz, dzz_lner;
 
 
   // Coordinates related: 9 FLOP
-  {
+  R sint, cost; {
     const R theta = (j + K(0.5)) * Delta2 ;
     sincos(theta, &sint, &cost);
   }
@@ -81,13 +84,15 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dz.lner = (cost * d1.lner - sint * d2.lner) / sphr;
   }
 
-  // 2nd derivatives: 229 FLOP
+  // 2nd derivatives: 313 FLOP
   {
     const S d11 = {D11(lnd), D11(ur), D11(uz), D11(Omg), D11(lne), D11(lner)};
     const S d22 = {D22(lnd), D22(ur), D22(uz), D22(Omg), D22(lne), D22(lner)};
 
-    const R d12_ur = D12(ur);
-    const R d12_uz = D12(uz);
+    const R d12_lnd  = D12(lnd);
+    const R d12_ur   = D12(ur);
+    const R d12_uz   = D12(uz);
+    const R d12_lner = D12(lner);
 
     const R cr = cost / sphr, sr = sint / sphr;
     const R cc = cr * cr, cs = cr * sr, ss = sr * sr;
@@ -100,10 +105,16 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     lap.lne  = (d11.lne  + d22.lne ) / sphr_2;
     lap.lner = (d11.lner + d22.lner) / sphr_2;
 
-    drr_ur = ss *  d11.ur + cc * d22.ur  + s2 * d12_ur + cr * dz.ur - sr * dr.ur;
-    drz_ur = cs * (d11.ur -      d22.ur) + c2 * d12_ur - cr * dr.ur - sr * dz.ur;
-    drz_uz = cs * (d11.uz -      d22.uz) + c2 * d12_uz - cr * dr.uz - sr * dz.uz;
-    dzz_uz = cc *  d11.uz + ss * d22.uz  - s2 * d12_uz - cr * dz.uz + sr * dr.uz;
+    drr_lnd  = ss *  d11.lnd  + cc * d22.lnd   + s2 * d12_lnd  + cr * dz.lnd  - sr * dr.lnd;
+    drr_ur   = ss *  d11.ur   + cc * d22.ur    + s2 * d12_ur   + cr * dz.ur   - sr * dr.ur;
+    drr_lner = ss *  d11.lner + cc * d22.lner  + s2 * d12_lner + cr * dz.lner - sr * dr.lner;
+    drz_lnd  = cs * (d11.lnd  -      d22.lnd ) + c2 * d12_lnd  - cr * dr.lnd  - sr * dz.lnd;
+    drz_ur   = cs * (d11.ur   -      d22.ur  ) + c2 * d12_ur   - cr * dr.ur   - sr * dz.ur;
+    drz_uz   = cs * (d11.uz   -      d22.uz  ) + c2 * d12_uz   - cr * dr.uz   - sr * dz.uz;
+    drz_lner = cs * (d11.lner -      d22.lner) + c2 * d12_lner - cr * dr.lner - sr * dz.lner;
+    dzz_lnd  = cc *  d11.lnd  + ss * d22.lnd   - s2 * d12_lnd  - cr * dz.lnd  + sr * dr.lnd;
+    dzz_uz   = cc *  d11.uz   + ss * d22.uz    - s2 * d12_uz   - cr * dz.uz   + sr * dr.uz;
+    dzz_lner = cc *  d11.lner + ss * d22.lner  - s2 * d12_lner - cr * dz.lner + sr * dr.lner;
   }
 
   // Advection and pseudo-force: 31 FLOP
@@ -177,9 +188,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Radiation force: 17 FLOP
 
+    const R icool    = (para_es + para_ff * den * pow(temp, K(-3.5))) * den;
     const R d_lner_2 = dr.lner * dr.lner + dz.lner * dz.lner;
-    const R bigR     = sqrt(d_lner_2);
-    const R Lambda   = (K(2.0) + bigR) / (K(6.0) + (K(3.0) + bigR) * bigR);
+    const R bigR     = sqrt(d_lner_2) / icool;
+    const R denom    = K(6.0) + (K(3.0) + bigR) * bigR;
+    const R Lambda   = (K(2.0) + bigR) / denom;
 
     dt.ur -= Lambda * rad * (dr.lnd + dr.lne);
     dt.uz -= Lambda * rad * (dz.lnd + dz.lne);
@@ -187,7 +200,6 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Radiation heating/cooling: 15 FLOP
 
-    const R icool   = (para_es + para_ff * den * pow(temp, K(-3.5))) * den;
     const R temp2   = temp * temp;
     const R cooling = icool * (para_ar * temp2 * temp2 / den - rad);
 
@@ -195,13 +207,33 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     dt.lner += cooling / rad;
 
 
-  // Radiation diffusion: 13 FLOP
+  // Radiation diffusion: 61 FLOP
 
-    const R d_lnd_d_lner = dr.lnd  * dr.lner + dz.lnd  * dz.lner;
+    const R d_lnd_d_lner = dr.lnd * dr.lner + dz.lnd * dz.lner;
     const R lap_er_er    = lap.lner + d_lner_2;
+    const R nu_rad       = Lambda / icool;
+    const R Lambdap      = -bigR * (K(4.0) + bigR) / (denom * denom);
+
+    const R es = para_es * den;
+    const R ff = para_ff * den * den * pow(temp, K(-3.5));
+
+    const R  dr_lnEr =  dr.lnd +  dr.lner;
+    const R  dz_lnEr =  dz.lnd +  dz.lner;
+    const R drr_lnEr = drr_lnd + drr_lner;
+    const R drz_lnEr = drz_lnd + drz_lner;
+    const R dzz_lnEr = dzz_lnd + dzz_lner;
+
+    const R dr_icool = es * dr.lnd + ff * (dr.lnd - K(3.5) * dr.lne);
+    const R dz_icool = es * dz.lnd + ff * (dz.lnd - K(3.5) * dz.lne);
+    const R dr_bigR  = ((dr_lnEr * drr_lnEr + dz_lnEr * drz_lnEr) /
+                        (K(1e-16) + bigR) / icool - bigR * dr_icool) / icool;
+    const R dz_bigR  = ((dr_lnEr * drz_lnEr + dz_lnEr * dzz_lnEr) /
+                        (K(1e-16) + bigR) / icool - bigR * dz_icool) / icool;
 
     dt.lner += lap_er_er * para_rd * sphr_2 +
-      (Lambda / icool) * (lap_d_d + K(2.0) * d_lnd_d_lner + lap_er_er);
+      nu_rad * (lap_d_d + K(2.0) * d_lnd_d_lner + lap_er_er) +
+      dr_lnEr * (Lambdap * dr_bigR - nu_rad * dr_icool) / icool +
+      dz_lnEr * (Lambdap * dz_bigR - nu_rad * dz_icool) / icool;
   }
 
   // External force: 7 FLOP
