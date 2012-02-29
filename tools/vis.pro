@@ -27,6 +27,9 @@ pro vis, i, rtheta=rtheta, all=all, png=png
     return
   endif
 
+  d = get_screen_size()
+  sz = (min(d) / 512) * 512
+
   name = string(i, format='(i04)') + '.raw'
   data = load(name, rtheta=rtheta)
   print, 'Loaded "' + name + '"'
@@ -34,9 +37,9 @@ pro vis, i, rtheta=rtheta, all=all, png=png
   if png then begin
     dsaved = !d.name
     set_plot, 'z'
-    device, decompose=0, set_resolution=[1024, 1024], set_pixel_depth=24
+    device, decompose=0, set_resolution=[sz, sz], set_pixel_depth=24
   endif else if !d.window eq -1 then begin
-    window, xSize=1024, ySize=1024, retain=2
+    window, xSize=sz, ySize=sz, retain=2
     device, decompose=0
   endif
 
@@ -51,11 +54,11 @@ pro vis, i, rtheta=rtheta, all=all, png=png
   endif else begin
     dx = data.x[1] - data.x[0]
     if rtheta then begin
-      d = sp2c(data.d[*,*,0], size=1024)
+      d = sp2c(data.d[*,*,0], size=sz)
       tvscl, reverse(d)
       tvscl, d, 1
     endif else begin
-      tvscl, congrid(data.d[*,*,0], 1024, 1024)
+      tvscl, congrid(data.d[*,*,0], sz, sz)
     endelse
   endelse
 
