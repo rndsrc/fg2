@@ -27,8 +27,8 @@ __device__ __constant__ R para_kappa = 0.0;       // thermal conductivity
 __device__ __constant__ R para_alpha = 0.01;      // Shakura-Sunyaev alpha
 
 __device__ __constant__ R para_ar    = 1.0e+8;    // radiation density constant
-__device__ __constant__ R para_es    = 1.0e-6;    // electron scattering
-__device__ __constant__ R para_ff    = 1.0e-12;   // free-free bremsstrahlung
+__device__ __constant__ R para_es    = 1.0;       // electron scattering
+__device__ __constant__ R para_ff    = 0.0;       // free-free bremsstrahlung
 
 __device__ __constant__ R para_dd    = 1.0e-4;    // simple density diffusion
 __device__ __constant__ R para_nu    = 2.0e-4;    // simple viscosity
@@ -188,9 +188,10 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Radiation force: 17 FLOP
 
-    const R icool    = (para_es + para_ff * den * pow(temp, K(-3.5))) * den;
+    const R kappa    = para_ff * den * den * pow(temp, K(-3.5));
+    const R chi      = para_es * den + kappa;
     const R d_lner_2 = dr.lner * dr.lner + dz.lner * dz.lner;
-    const R bigR     = sqrt(d_lner_2) / icool;
+    const R bigR     = sqrt(d_lner_2) / chi;
     const R denom    = K(6.0) + (K(3.0) + bigR) * bigR;
     const R Lambda   = (K(2.0) + bigR) / denom;
 
@@ -201,7 +202,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   // Radiation heating/cooling: 15 FLOP
 
     const R temp2   = temp * temp;
-    const R cooling = icool * (para_ar * temp2 * temp2 / den - rad);
+    const R cooling = kappa * (para_ar * temp2 * temp2 / den - rad);
 
     dt.lne  -= cooling / eng;
     dt.lner += cooling / rad;
@@ -211,11 +212,8 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
     const R d_lnd_d_lner = dr.lnd * dr.lner + dz.lnd * dz.lner;
     const R lap_er_er    = lap.lner + d_lner_2;
-    const R nu_rad       = Lambda / icool;
+    const R nu_rad       = Lambda / chi;
     const R Lambdap      = -bigR * (K(4.0) + bigR) / (denom * denom);
-
-    const R es = para_es * den;
-    const R ff = para_ff * den * den * pow(temp, K(-3.5));
 
     const R  dr_lnEr =  dr.lnd +  dr.lner;
     const R  dz_lnEr =  dz.lnd +  dz.lner;
@@ -223,17 +221,17 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
     const R drz_lnEr = drz_lnd + drz_lner;
     const R dzz_lnEr = dzz_lnd + dzz_lner;
 
-    const R dr_icool = es * dr.lnd + ff * (dr.lnd - K(3.5) * dr.lne);
-    const R dz_icool = es * dz.lnd + ff * (dz.lnd - K(3.5) * dz.lne);
+    const R dr_chi   = chi * dr.lnd - K(3.5) * kappa * dr.lne;
+    const R dz_chi   = chi * dz.lnd - K(3.5) * kappa * dz.lne;
     const R dr_bigR  = ((dr_lnEr * drr_lnEr + dz_lnEr * drz_lnEr) /
-                        (K(1e-16) + bigR) / icool - bigR * dr_icool) / icool;
+                        (K(1e-16) + bigR) / chi - bigR * dr_chi) / chi;
     const R dz_bigR  = ((dr_lnEr * drz_lnEr + dz_lnEr * dzz_lnEr) /
-                        (K(1e-16) + bigR) / icool - bigR * dz_icool) / icool;
+                        (K(1e-16) + bigR) / chi - bigR * dz_chi) / chi;
 
     dt.lner += lap_er_er * para_rd * sphr_2 +
       nu_rad * (lap_d_d + K(2.0) * d_lnd_d_lner + lap_er_er) +
-      dr_lnEr * (Lambdap * dr_bigR - nu_rad * dr_icool) / icool +
-      dz_lnEr * (Lambdap * dz_bigR - nu_rad * dz_icool) / icool;
+      dr_lnEr * (Lambdap * dr_bigR - nu_rad * dr_chi) / chi +
+      dz_lnEr * (Lambdap * dz_bigR - nu_rad * dz_chi) / chi;
   }
 
   // External force: 7 FLOP
