@@ -78,6 +78,7 @@ int  solve (E, E, Z, Z);
 E    getdt (void);
 int  step  (E, E);
 
+void Euler(R *, R);
 void bcond(R *, int, int);
 void kick (R *, const R *, R, R);
 void drift(R *, const R *, R);
