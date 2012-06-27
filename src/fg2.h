@@ -72,7 +72,7 @@ E    load(const char *);
 void dump(const char *, E);
 
 const char *para(const char *);
-Z    setup (Z, Z);
+size_t setup(Z, Z);
 void config(void);
 int  solve (E, E, Z, Z);
 E    getdt (void);

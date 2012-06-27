@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 
   // Setup the grid and global variables
   print("  Resolution   : %d x %d", n1, n2);
-  if(Z sz = setup(n1, n2))
+  if(size_t sz = setup(n1, n2))
     print(" using %.3gMiB (%.3g%%) of global memory\n",
           sz / 1048576.0, 100.0 * sz / gsz);
   else

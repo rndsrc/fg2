@@ -29,7 +29,7 @@ static void done(void)
   cudaFree(global::u - HALF * (global::s + NVAR));
 }
 
-Z setup(const Z n1, const Z n2)
+size_t setup(const Z n1, const Z n2)
 {
   if(atexit(done)) abort();
 
@@ -72,13 +72,13 @@ Z setup(const Z n1, const Z n2)
   global::v = (R *)v + HALF * (global::s + NVAR);
 
   // Allocate host memory
-  const Z n = global::s * m1;
+  const size_t n = global::s * m1;
   R *h = (R *)malloc(sizeof(R) * n);
   if(NULL == h) return 0;
   global::host = h + HALF * (global::s + NVAR);
 
   // Initialize all arrays to -FLT_MAX or -DBL_MAX
-  for(Z i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
+  for(size_t i = 0; i < n; ++i) h[i] = -std::numeric_limits<R>::max();
   cudaMemcpy(u, h, sizeof(R) * n, cudaMemcpyHostToDevice);
   cudaMemcpy(v, h, sizeof(R) * n, cudaMemcpyHostToDevice);
 
