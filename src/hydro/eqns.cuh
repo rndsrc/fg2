@@ -80,7 +80,7 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 
   // Density diffusion and thermal conductivity: 64 FLOP
   {
-    const R d_lnd_2 = d1.lnd * d1.lnd + d2.lnd * d2.lnd;
+    const R d_lnd_2 = d1.lnd * d1.lnd + d2.lnd + d2.lnd;
     const R d_lne_2 = d1.lne * d1.lne + d2.lne * d2.lne;
     const R ed      = (para_gamma - K(1.0)) * para_kappa;
 
