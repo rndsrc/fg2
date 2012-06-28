@@ -21,6 +21,9 @@ __device__ __constant__ R para_nus = 2.0e-4; // shear viscosity
 __device__ __constant__ R para_nub = 0.0;    // bulk  viscosity
 __device__ __constant__ R para_cs2 = 1.0;    // sound speed square
 
+__device__ __constant__ R para_f   = 0.0;    // forcing amplitude
+__device__ __constant__ R para_n   = 8.0;    // forcing wavenumber
+
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
   const S d1 = {D1(lnd), D1(u1), D1(u2)}; // 27 FLOP
@@ -73,6 +76,11 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   {
     dt.lnd += para_dd * (D11(lnd) + d1.lnd * d1.lnd +
                          D22(lnd) + d2.lnd * d2.lnd);
+  }
+
+  // We turn on Kolmogorov forcing when fi * ki is negative: 6 FLOP
+  if(para_f * para_n < K(0.0)) {
+    dt.u2 += para_f * cos(K(6.2831853071795865) * para_n * i * Delta1);
   }
 
   return dt;

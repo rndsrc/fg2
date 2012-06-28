@@ -95,7 +95,7 @@ void kick(R *v, const R *x, const R t, const R b)
 // CUDA cannot really understand constant device variables across many
 // files.  Therefore we are forced to put the Euler kernel here.
 
-#include "Euler.cuh"
+#include <Euler.cuh>
 
 static __global__ void kernel(R *u, const R dt, const Z n, const Z s)
 {

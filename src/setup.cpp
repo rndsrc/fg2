@@ -43,7 +43,7 @@ size_t setup(const Z n1, const Z n2)
   for(Z i = 2; dev.multiProcessorCount % i == 0; i *= 2) w /= 2;
   for(Z h = 0, i = 1; ; ++i) {
     Z g = NVAR * sizeof(R) * (ORDER + i);
-    Z j = (dev.sharedMemPerBlock - SYS) / g - ORDER;
+    Z j = (dev.sharedMemPerBlock - SYS) / g - ORDER; if(j > 512) j = 512;
     if(i * j > dev.regsPerBlock / REG) j = dev.regsPerBlock / (REG * i);
     if(i * j > dev.maxThreadsPerBlock) j = dev.maxThreadsPerBlock / i;
     j = (j / dev.warpSize) * dev.warpSize; // multiple of warp size
