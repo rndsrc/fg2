@@ -20,67 +20,81 @@
 #include "deriv.h"
 #include <eqns.cuh>
 
-static __device__ void copy(R *dst, const R *src, const Z n)
+static __device__ void copy(R *dst, const R *src, const Z h, const Z s)
 {
-  const Z m = (n - 1) / blockDim.x + 1;
-  for(Z i = 0; i < m; ++i) {
-    const Z j = i * blockDim.x + threadIdx.x;
-    if(j < n) dst[j] = src[j];
+  const Z w = (blockDim.x + ORDER) * NVAR;
+  const Z n =  blockDim.x * blockDim.y;
+  const Z m = (w - 1) / n + 1;
+  const Z l = threadIdx.y * blockDim.x + threadIdx.x;
+
+  for(Z i = 0; i < h; ++i) {
+    for(Z j = 0; j < m; ++j) {
+      const Z k = j * n + l;
+      if(k < w) dst[i * w + k] = src[i * s + k];
+    }
+    __syncthreads();
   }
 }
 
-static __device__ void ssum(R *dst, const R *src, const R beta, const Z n)
+static __device__ void ssum(R *dst, const R *src, const R beta, const Z s)
 {
-  const Z m = (n - 1) / blockDim.x + 1;
-  for(Z i = 0; i < m; ++i) {
-    const Z j = i * blockDim.x + threadIdx.x;
-    if(j < n) dst[j] = beta * dst[j] + src[j];
+  const Z w =  blockDim.x * NVAR;
+  const Z n =  blockDim.x * blockDim.y;
+  const Z m = (w - 1) / n + 1;
+  const Z l = threadIdx.y * blockDim.x + threadIdx.x;
+
+  for(Z i = 0; i < blockDim.y; ++i) {
+    for(Z j = 0; j < m; ++j) {
+      const Z k = j * n + l;
+      if(k < w) dst[i * s + k] = beta * dst[i * s + k] + src[i * w + k];
+    }
+    __syncthreads();
   }
 }
 
-static __global__ void kernel(R *v, const R *x, const R t, const R beta,
+static __global__ void kernel(R *out, const R *in, const R t, const R beta,
                               Z n1, Z n2, const Z s)
 {
   extern __shared__ R shared[]; // dynamic shared variable
-  {
-    const Z n = blockDim.x;               // inner size
-    const Z m = (n1 - 1) / gridDim.y + 1; // outer size
-    const Z l = blockIdx.y * m * s + blockIdx.x * n * NVAR;
-    // Offset global arrays to the correct locations
-    v += l;
-    x += l + HALF * (s - NVAR);
-    // Redefine local size
-    n1 = (blockIdx.y == gridDim.y - 1) ? n1 - blockIdx.y * m : m;
-    n2 = (blockIdx.x == gridDim.x - 1) ? n2 - blockIdx.x * n : n;
-  }
-  const Z Count = (n2 + ORDER) * NVAR;
-  const Z count = (n2        ) * NVAR;
 
-  R *in     = shared + (threadIdx.y + ORDER) * Count;
-  R *active = shared + (threadIdx.y + HALF ) * Count + HALF * NVAR;
-  R *out    = shared + (threadIdx.y        ) * count;
+  Z i1 = threadIdx.y;
+  Z i2 = threadIdx.x;
+  {
+    const Z m1 = blockDim.y * ((n1 - 1) / (gridDim.y * blockDim.y) + 1);
+    const Z m2 = blockDim.x;
+
+    const Z offset = blockIdx.y * m1 * s + blockIdx.x * m2 * NVAR;
+    out += offset;
+    in  += offset + HALF * (s - NVAR);
+
+    n1 = (blockIdx.y == gridDim.y - 1) ? n1 - blockIdx.y * m1 : m1;
+    n2 = (blockIdx.x == gridDim.x - 1) ? n2 - blockIdx.x * m2 : m2;
+
+    i1 += blockIdx.y * m1;
+    i2 += blockIdx.x * m2;
+  }
+  const Z w = (blockDim.x + ORDER) * NVAR;
+  const Z h = (n1 - 1) / blockDim.y + 1;
+  const Z l = threadIdx.y * blockDim.x + threadIdx.x;
+
+  const S *active = (S *)(shared + (HALF + threadIdx.y) * w
+                                 + (HALF + threadIdx.x) * NVAR);
 
   // Modified rolling cache (Micikevicius 2009)
-  for(Z i = threadIdx.y; i < n1; i += blockDim.y) {
-    if(i < blockDim.y) // pre-load cache
-      for(Z j = threadIdx.y; j < ORDER; j += blockDim.y)
-        copy(shared + j * Count, x + (j - ORDER) * s, Count);
-    else // shift cache
-      for(Z j = threadIdx.y; j < ORDER; j += blockDim.y)
-        copy(shared + j * Count, shared + (j + blockDim.y) * Count, Count);
-    copy(in, x + i * s, Count);
+  for(Z i = 0; i < h; ++i) {
+
+    if(i == 0) copy(shared, in     - ORDER      * s, ORDER, s);
+    else       copy(shared, shared + blockDim.y * w, ORDER, w);
+
+    copy(shared + ORDER * w, in + i * blockDim.y * s, blockDim.y, s);
+
+    const S f = eqns(active, i1 + i * blockDim.y, i2, blockDim.x + ORDER);
     __syncthreads();
 
-    const Z i1 = blockIdx.y * n1 + i;
-    const Z i2 = blockIdx.x * blockDim.x + threadIdx.x;
-    const S f  = eqns((S *)active + threadIdx.x, i1, i2, n2 + ORDER);
+    ((S *)shared)[l] = f;
     __syncthreads();
 
-    if(threadIdx.x < n2) *((S *)out + threadIdx.x) = f;
-    __syncthreads();
-
-    ssum(v + i * s, out, beta, count);
-    __syncthreads();
+    ssum(out + i * blockDim.y * s, shared, beta, s);
   }
 }
 
