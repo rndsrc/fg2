@@ -20,7 +20,8 @@
 #include "deriv.h"
 #include <eqns.cuh>
 
-static __device__ void copy(R *dst, const R *src, const Z h, const Z s)
+static __device__ void copy(R *dst, const R *src, const Z h,
+                            const Z n2, const Z s)
 {
   const Z w = (blockDim.x + ORDER) * NVAR;
   const Z n =  blockDim.x * blockDim.y;
@@ -30,13 +31,15 @@ static __device__ void copy(R *dst, const R *src, const Z h, const Z s)
   for(Z i = 0; i < h; ++i) {
     for(Z j = 0; j < m; ++j) {
       const Z k = j * n + l;
-      if(k < w) dst[i * w + k] = src[i * s + k];
+      if(k < w && k < (n2 + ORDER) * NVAR)
+        dst[i * w + k] = src[i * s + k];
     }
     __syncthreads();
   }
 }
 
-static __device__ void ssum(R *dst, const R *src, const R beta, const Z s)
+static __device__ void ssum(R *dst, const R *src, const R beta,
+                            const Z n2, const Z s)
 {
   const Z w =  blockDim.x * NVAR;
   const Z n =  blockDim.x * blockDim.y;
@@ -46,7 +49,8 @@ static __device__ void ssum(R *dst, const R *src, const R beta, const Z s)
   for(Z i = 0; i < blockDim.y; ++i) {
     for(Z j = 0; j < m; ++j) {
       const Z k = j * n + l;
-      if(k < w) dst[i * s + k] = beta * dst[i * s + k] + src[i * w + k];
+      if(k < w && k < n2 * NVAR)
+        dst[i * s + k] = beta * dst[i * s + k] + src[i * w + k];
     }
     __syncthreads();
   }
@@ -83,10 +87,10 @@ static __global__ void kernel(R *out, const R *in, const R t, const R beta,
   // Modified rolling cache (Micikevicius 2009)
   for(Z i = 0; i < h; ++i) {
 
-    if(i == 0) copy(shared, in     - ORDER      * s, ORDER, s);
-    else       copy(shared, shared + blockDim.y * w, ORDER, w);
+    if(i == 0) copy(shared, in     - ORDER      * s, ORDER, n2, s);
+    else       copy(shared, shared + blockDim.y * w, ORDER, n2, w);
 
-    copy(shared + ORDER * w, in + i * blockDim.y * s, blockDim.y, s);
+    copy(shared + ORDER * w, in + i * blockDim.y * s, blockDim.y, n2, s);
 
     const S f = eqns(active, i1 + i * blockDim.y, i2, blockDim.x + ORDER);
     __syncthreads();
@@ -94,7 +98,7 @@ static __global__ void kernel(R *out, const R *in, const R t, const R beta,
     ((S *)shared)[l] = f;
     __syncthreads();
 
-    ssum(out + i * blockDim.y * s, shared, beta, s);
+    ssum(out + i * blockDim.y * s, shared, beta, n2, s);
   }
 }
 
