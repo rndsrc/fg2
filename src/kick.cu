@@ -39,14 +39,14 @@ static __device__ void copy(R *dst, const R *src, const Z h,
 }
 
 static __device__ void ssum(R *dst, const R *src, const R beta,
-                            const Z n2, const Z s)
+                            const Z n1, const Z n2, const Z s)
 {
   const Z w =  blockDim.x * NVAR;
   const Z n =  blockDim.x * blockDim.y;
   const Z m = (w - 1) / n + 1;
   const Z l = threadIdx.y * blockDim.x + threadIdx.x;
 
-  for(Z i = 0; i < blockDim.y; ++i) {
+  for(Z i = 0; i < blockDim.y && i < n1; ++i) {
     for(Z j = 0; j < m; ++j) {
       const Z k = j * n + l;
       if(k < w && k < n2 * NVAR)
@@ -87,10 +87,13 @@ static __global__ void kernel(R *out, const R *in, const R t, const R beta,
   // Modified rolling cache (Micikevicius 2009)
   for(Z i = 0; i < h; ++i) {
 
+    const Z remain = n1 - i * blockDim.y;
+
     if(i == 0) copy(shared, in     - ORDER      * s, ORDER, n2, s);
     else       copy(shared, shared + blockDim.y * w, ORDER, n2, w);
 
-    copy(shared + ORDER * w, in + i * blockDim.y * s, blockDim.y, n2, s);
+    copy(shared + ORDER * w, in + i * blockDim.y * s,
+         blockDim.y < remain ? blockDim.y : remain, n2, s);
 
     const S f = eqns(active, i1 + i * blockDim.y, i2, blockDim.x + ORDER);
     __syncthreads();
@@ -98,7 +101,7 @@ static __global__ void kernel(R *out, const R *in, const R t, const R beta,
     ((S *)shared)[l] = f;
     __syncthreads();
 
-    ssum(out + i * blockDim.y * s, shared, beta, n2, s);
+    ssum(out + i * blockDim.y * s, shared, beta, remain, n2, s);
   }
 }
 
