@@ -40,6 +40,7 @@ int solve(E t, const E t_final, Z i, const Z n)
       print("\b\b\b\b\b\b\b\b\b\b\b\b%c dt ~ %5.0e", rotor[++m%4], (double)dt);
       if(int err = step(t, dt)) {
         print(" crashed in %d step%s\n", m, m > 1 ? "s" : "");
+        dump("****.raw", t);
         banner(" Abort Simulation ", '=', '=');
         error("CUDA ERROR: %s\n", cudaGetErrorString((cudaError_t)err));
       }

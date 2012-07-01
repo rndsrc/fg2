@@ -16,6 +16,18 @@
    You should have received a copy of the GNU General Public License
    along with fg2.  If not, see <http://www.gnu.org/licenses/>. */
 
+static R nus, fi, ki;
+
+static S Kf(R x, R y)
+{
+  const R a  = fi / (nus * ki * ki);
+
+  const R d  = 1.0 + 2.0e-6 * ((double)rand() / RAND_MAX - 0.5);
+  const R u2 = a * cos(ki * x);
+
+  return (S){log(d), 0.0, u2};
+}
+
 static S zeros(R x, R y)
 {
   return (S){0.0, 0.0, 0.0};
@@ -23,5 +35,11 @@ static S zeros(R x, R y)
 
 static S (*pick(const char *name))(R, R)
 {
+  cudaMemcpyFromSymbol(&nus, "para_nus", sizeof(R));
+  cudaMemcpyFromSymbol(&fi,  "para_f",   sizeof(R));
+  cudaMemcpyFromSymbol(&ki,  "para_n",   sizeof(R)); ki *= 6.2831853071795865;
+
+  if(!strcmp(name, "Kf")) return Kf;
+
   return zeros; // default
 }
