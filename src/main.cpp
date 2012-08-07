@@ -21,7 +21,7 @@
 #include <cuda_runtime.h>
 #include "fg2.h"
 
-#define ISAB(X) (('A' <= (X) && (X) <= 'Z') && ('A' <= (X) && (X) <= 'Z'))
+#define ISAB(X) (('A' <= (X) && (X) <= 'Z') || ('a' <= (X) && (X) <= 'z'))
 #define NOVAL   (i+1 == argc) || (argv[i+1][0] == '-' && ISAB(argv[i+1][1]))
 #define BREAK   if(NOVAL) break
 #define PARA(X) case X: if(NOVAL) goto ignore; // guru can write FORTRAN in C++
