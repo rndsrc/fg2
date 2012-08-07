@@ -20,12 +20,16 @@ static R nus, fi, ki;
 
 static S Kf(R x, R y)
 {
+  const R r1 = (double)rand() / RAND_MAX;
+  const R r2 = (double)rand() / RAND_MAX;
+  const R q1 = sqrt(-2.0 * log(r1)) * sin(2.0 * M_PI * r2);
+  const R q2 = sqrt(-2.0 * log(r1)) * cos(2.0 * M_PI * r2);
+
   const R a  = fi / (nus * ki * ki);
+  const R u1 = 1.0e-9 * q1;
+  const R u2 = 1.0e-9 * q2 + a * cos(ki * x);
 
-  const R d  = 1.0 + 2.0e-6 * ((double)rand() / RAND_MAX - 0.5);
-  const R u2 = a * cos(ki * x);
-
-  return (S){log(d), 0.0, u2};
+  return (S){0.0, u1, u2};
 }
 
 static S zeros(R x, R y)
@@ -37,7 +41,7 @@ static S (*pick(const char *name))(R, R)
 {
   cudaMemcpyFromSymbol(&nus, "para_nus", sizeof(R));
   cudaMemcpyFromSymbol(&fi,  "para_f",   sizeof(R));
-  cudaMemcpyFromSymbol(&ki,  "para_n",   sizeof(R)); ki *= 6.2831853071795865;
+  cudaMemcpyFromSymbol(&ki,  "para_k",   sizeof(R));
 
   if(!strcmp(name, "Kf")) return Kf;
 
