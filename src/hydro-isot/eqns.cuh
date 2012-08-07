@@ -22,7 +22,7 @@ __device__ __constant__ R para_nub = 0.0;    // bulk  viscosity
 __device__ __constant__ R para_cs2 = 1.0;    // sound speed square
 
 __device__ __constant__ R para_f   = 0.0;    // forcing amplitude
-__device__ __constant__ R para_n   = 8.0;    // forcing wavenumber
+__device__ __constant__ R para_k   =-8.0;    // forcing wavenumber
 
 static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
 {
@@ -79,8 +79,8 @@ static __device__ S eqns(const S *u, const Z i, const Z j, const Z s)
   }
 
   // We turn on Kolmogorov forcing when fi * ki is negative: 6 FLOP
-  if(para_f * para_n < K(0.0)) {
-    dt.u2 += para_f * cos(K(6.2831853071795865) * para_n * i * Delta1);
+  if(para_f * para_k < K(0.0)) {
+    dt.u2 += para_f * cos(para_k * i * Delta1);
   }
 
   return dt;

@@ -20,5 +20,7 @@ static const int eqns_flop = 214;
 
 static void settings(void)
 {
-  // Nothing special...
+  using namespace global;
+
+  l1 = l2 = 2.0 * M_PI;
 }

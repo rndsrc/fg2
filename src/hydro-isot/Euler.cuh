@@ -23,14 +23,14 @@ __device__ __constant__ R rand2 = 0.0;
 
 static __device__ void first_order(S *u, const R dt, const Z i, const Z j)
 {
-  if(para_f * para_n > K(0.0)) {
-    const R n1 = para_n * cos(rand1);
-    const R n2 = para_n * sin(rand1);
+  if(para_f * para_k > K(0.0)) {
+    const R n1 = para_k * cos(rand1);
+    const R n2 = para_k * sin(rand1);
 
     const R phi = K(6.2831853071795865) * ((Z)(n1 + K(0.5)) * i * Delta1 +
                                            (Z)(n2 + K(0.5)) * j * Delta2);
     const R amp = sqrt(dt) * (para_f * cos(phi + rand2)) /
-                             (para_n * exp(u->lnd));
+                             (para_k * exp(u->lnd));
     u->u1 += amp * n1;
     u->u2 += amp * n2;
   }
