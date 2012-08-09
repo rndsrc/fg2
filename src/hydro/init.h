@@ -46,7 +46,7 @@ static S bow(R x, R y) // need to turn on density diffusion
   return (S){log(d), u, 0.0, log(e)};
 }
 
-static S implos(R x, R y)
+static S implode(R x, R y)
 {
   x -= 0.5 * global::l1;
   y -= 0.5 * global::l2;
@@ -55,6 +55,23 @@ static S implos(R x, R y)
   R p = 0.14  + 0.86  * Fermi_Dirac(0.15 - fabs(x) - fabs(y), 0.001);
 
   return (S){log(d), 0.0, 0.0, log(p / d / (poly_gamma - 1.0))};
+}
+
+static S sharp_implode(R x, R y)
+{
+  S s = {0.0, 0.0, 0.0, 0.0};
+
+  x -= 0.5 * global::l1;
+  y -= 0.5 * global::l2;
+
+  if(fabs(x) + fabs(y) < 0.25) {
+    const R d = 0.125;
+    const R p = 0.14;
+    s.lnd = log(d);
+    s.lne = log(p / d / (poly_gamma - 1.0));
+  }
+
+  return s;
 }
 
 static S KH(R x, R y)
@@ -102,11 +119,12 @@ static S (*pick(const char *name))(R, R)
 {
   cudaMemcpyFromSymbol(&poly_gamma, "para_gamma", sizeof(R));
 
-  if(!strcmp(name, "blast" )) return blast;  // Gaussian blast wave
-  if(!strcmp(name, "bow"   )) return bow;    // Bow shock
-  if(!strcmp(name, "implos")) return implos; // Bow shock
-  if(!strcmp(name, "KH"    )) return KH;     // Kelvin-Helmholtz instability
-  if(!strcmp(name, "Sod"   )) return Sod;    // Sod shock tube
+  if(!strcmp(name, "blast"        )) return blast;         // Gaussian blast wave
+  if(!strcmp(name, "bow"          )) return bow;           // Bow shock
+  if(!strcmp(name, "implode"      )) return implode;       // Implosion
+  if(!strcmp(name, "sharp-implode")) return sharp_implode; // Sharp implosion
+  if(!strcmp(name, "KH"           )) return KH;            // Kelvin-Helmholtz instability
+  if(!strcmp(name, "Sod"          )) return Sod;           // Sod shock tube
 
   return zeros; // default
 }
